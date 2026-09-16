@@ -77,6 +77,16 @@ def test_comment_separated_by_blank_line_stays_with_previous_segment() -> None:
     assert spans(segments_of(code, PYTHON)) == [(1, 4), (5, 5)]
 
 
+def test_trailing_comment_on_a_code_line_does_not_start_a_segment() -> None:
+    code = """
+        TIMEOUT = 30  # seconds
+        # Retries for flaky networks.
+        RETRIES = 3
+    """
+
+    assert spans(segments_of(code, PYTHON)) == [(1, 1), (2, 3)]
+
+
 def test_statements_sharing_a_line_do_not_split_it() -> None:
     assert spans(segments_of("a = 1; b = 2\nc = 3\n", PYTHON)) == [(1, 1), (2, 2)]
 
