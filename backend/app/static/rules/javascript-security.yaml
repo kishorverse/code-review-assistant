@@ -1,0 +1,42 @@
+# Margin's own Opengrep rules for JavaScript and TypeScript.
+rules:
+  - id: javascript-shell-command-from-dynamic-input
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      A shell command is built from dynamic values and run through a shell. User input in
+      it allows command injection. Use execFile or spawn with an argument array.
+    metadata: {cwe: "CWE-78", category: security, confidence: high}
+    pattern-either:
+      - pattern: $CP.exec(`...${...}...`, ...)
+      - pattern: $CP.exec("..." + $X, ...)
+      - pattern: $CP.execSync(`...${...}...`, ...)
+      - pattern: $CP.execSync("..." + $X, ...)
+
+  - id: javascript-eval-of-dynamic-value
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      eval or new Function runs a dynamic value as code. If it contains user input, an
+      attacker can run arbitrary code. Parse the data instead, for example with JSON.parse.
+    metadata: {cwe: "CWE-95", category: security, confidence: medium}
+    patterns:
+      - pattern-either:
+          - pattern: eval($X)
+          - pattern: new Function(..., $X)
+      - pattern-not: eval("...")
+      - pattern-not: new Function(..., "...")
+
+  - id: javascript-html-injection-via-inner-html
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >-
+      A dynamic value is assigned to innerHTML or outerHTML. User input in it allows
+      cross-site scripting. Use textContent, or sanitize the HTML first.
+    metadata: {cwe: "CWE-79", category: security, confidence: medium}
+    patterns:
+      - pattern-either:
+          - pattern: $ELEMENT.innerHTML = $VALUE
+          - pattern: $ELEMENT.outerHTML = $VALUE
+      - pattern-not: $ELEMENT.innerHTML = "..."
+      - pattern-not: $ELEMENT.outerHTML = "..."
