@@ -5,10 +5,16 @@ description = "AI code review assistant combining static analysis with LLM revie
 license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
+    "bandit>=1.9.4",
+    "detect-secrets>=1.5.0",
     "fastapi>=0.141.1",
     "httpx>=0.28.1",
+    "lizard>=1.24.0",
+    "mypy>=2.3.1",
     "pydantic>=2.13.5",
     "pydantic-settings>=2.15.0",
+    "radon>=6.0.1",
+    "ruff>=0.16.8",
     "structlog>=26.1.0",
     # 0.26.0 returns corrupt node positions, and can segfault, for code nested
     # more than ~130 levels deep. Lift the cap once a fixed release is verified.
@@ -19,17 +25,16 @@ dependencies = [
     "tree-sitter-python>=0.25.0",
     "tree-sitter-typescript>=0.23.2",
     "uvicorn[standard]>=0.53.0",
+    "vulture>=2.16",
 ]
 
 [dependency-groups]
 dev = [
-    "mypy>=2.3.1",
     "pre-commit>=4.6.2",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
     "respx>=0.23.1",
-    "ruff>=0.16.7",
 ]
 
 [build-system]
