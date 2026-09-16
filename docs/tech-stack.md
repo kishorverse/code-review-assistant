@@ -78,7 +78,7 @@ Provider limits live in `backend/config/providers.yaml`, so they can be updated 
 
 | Tool | Finds | Languages |
 |---|---|---|
-| tree-sitter (`tree-sitter-language-pack`) | Syntax trees, function boundaries, broken or incomplete regions | 100+ |
+| tree-sitter with official grammar packages (`tree-sitter-python`, `-javascript`, `-typescript`, `-java`, `-go`) | Syntax trees, code boundaries for chunking, broken or incomplete regions | Python, JavaScript, TypeScript/TSX, Java, Go |
 | Ruff | PEP 8 style, pyflakes and bugbear bugs, simplifications, performance anti-patterns, docstrings | Python |
 | Bandit | Security issues with CWE ids | Python |
 | mypy | Type errors | Python |
@@ -88,7 +88,8 @@ Provider limits live in `backend/config/providers.yaml`, so they can be updated 
 | detect-secrets | Hard-coded credentials (also drives redaction) | Any text |
 | Opengrep | Pattern and taint rules, using the project's own rules in `backend/rules/` | 30+ |
 
-- **Language support.** Python gets full support. Other languages get basic support: tree-sitter chunking, Lizard, detect-secrets, Opengrep and LLM review. Adding a language means writing one adapter in `backend/app/languages/`.
+- **Language support.** Python gets full support. JavaScript, TypeScript, Java and Go get basic support: tree-sitter chunking, Lizard, detect-secrets, Opengrep and LLM review. Adding a language means adding its grammar package and one declarative adapter in `backend/app/languages/`.
+- **Grammars are pinned, not downloaded.** Each grammar is an official tree-sitter wheel locked in `uv.lock`. `tree-sitter-language-pack` was evaluated and rejected: its 1.x releases download compiled grammar libraries at runtime, which breaks offline scans and puts unpinned native code outside the lock file.
 - **Normalization.** All output is normalized into one `Finding` schema (file, lines, category, severity, rule id, CWE, sources, confidence).
 - **Optional tools.** A tool that is not installed is reported as *skipped* and the scan continues.
 
