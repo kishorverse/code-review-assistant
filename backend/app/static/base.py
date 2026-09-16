@@ -1,6 +1,6 @@
 """The contract every analyzer implements, and helpers for normalizing tool output."""
 
-from collections.abc import Collection, Iterable, Sequence
+from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path, PurePosixPath
@@ -118,6 +118,7 @@ async def run_tool(
     *,
     accepted_exit_codes: Collection[int] = (0,),
     cwd: Path | None = None,
+    extra_environment: Mapping[str, str] | None = None,
 ) -> ProcessResult:
     """Run an analyzer command with the minimal environment.
 
@@ -127,14 +128,14 @@ async def run_tool(
         accepted_exit_codes: Exit codes that mean the tool ran (many linters exit
             non-zero when they find issues).
         cwd: Working directory override, for tools that must run from the root.
+        extra_environment: Tool-specific variables added to the minimal environment.
 
     Raises:
         ToolUnavailableError: If the executable is missing.
         AnalyzerError: If the tool exits with an unexpected code.
     """
-    result = await run_process(
-        argv, cwd=cwd or target.scratch, env=minimal_environment(target.scratch)
-    )
+    environment = minimal_environment(target.scratch) | dict(extra_environment or {})
+    result = await run_process(argv, cwd=cwd or target.scratch, env=environment)
     if result.returncode not in accepted_exit_codes:
         detail = next((line for line in reversed(result.stderr.splitlines()) if line.strip()), "")
         raise AnalyzerError(f"exited with code {result.returncode}: {detail[:200]}".rstrip(": "))
