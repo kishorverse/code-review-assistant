@@ -1,7 +1,8 @@
 """Per-scan working directories under one storage root.
 
-Each scan owns ``<root>/<scan_id>/upload`` for the raw upload and
-``<root>/<scan_id>/source`` for the extracted files. Scan ids must match the
+Each scan owns ``<root>/<scan_id>/upload`` for the raw upload,
+``<root>/<scan_id>/source`` for the extracted files and ``scratch`` as the
+analyzers' working directory. Scan ids must match the
 format :func:`new_scan_id` produces, so a crafted id can never address a path
 outside the storage root. Workspaces are deleted after a retention period to
 honor the privacy promise that uploaded code is not kept.
@@ -42,6 +43,11 @@ class ScanWorkspace:
         """Where the reviewable files are extracted."""
         return self.root / "source"
 
+    @property
+    def scratch_dir(self) -> Path:
+        """Empty working directory for analyzer processes; never holds uploaded files."""
+        return self.root / "scratch"
+
 
 class ScanStorage:
     """Creates, finds and removes scan workspaces under ``root``.
@@ -75,6 +81,7 @@ class ScanStorage:
         workspace.root.mkdir()
         workspace.upload_dir.mkdir()
         workspace.source_dir.mkdir()
+        workspace.scratch_dir.mkdir()
         return workspace
 
     def delete(self, scan_id: str) -> None:
