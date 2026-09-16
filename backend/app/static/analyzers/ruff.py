@@ -56,6 +56,7 @@ class RuffAnalyzer:
                 "ruff",
                 "check",
                 "--isolated",
+                "--no-respect-gitignore",
                 "--no-cache",
                 "--exit-zero",
                 "--output-format",

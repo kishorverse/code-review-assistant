@@ -54,7 +54,9 @@ class LizardAnalyzer:
 
     async def analyze(self, target: AnalysisTarget) -> AnalyzerResult:
         """Run Lizard with CSV output over the whole target."""
-        result = await run_tool(target, python_tool("lizard", "--csv", str(target.root)))
+        result = await run_tool(
+            target, python_tool("lizard", "--csv", "--no-gitignore", str(target.root))
+        )
         findings, metrics = parse_output(result.stdout, target)
         return AnalyzerResult(findings=findings, metrics=metrics)
 

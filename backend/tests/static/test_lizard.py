@@ -29,6 +29,15 @@ async def test_measures_functions_and_flags_complexity_and_parameters(
     assert metrics["cfg/setup.py"].functions[0].parameters == 8
 
 
+async def test_gitignore_inside_the_upload_cannot_hide_code(make_target: TargetFactory) -> None:
+    target = make_target({"web/route.js": js_branchy("route", 20), ".gitignore": "*\n"})
+
+    result = await LizardAnalyzer().analyze(target)
+
+    assert "function-complexity" in by_rule(result.findings)
+    assert [metric.path for metric in result.metrics] == ["web/route.js"]
+
+
 async def test_python_complexity_is_left_to_radon(make_target: TargetFactory) -> None:
     branches = "".join(f"    if v == {n}:\n        return {n}\n" for n in range(20))
     target = make_target({"app/route.py": f"def route(v):\n{branches}    return -1\n"})

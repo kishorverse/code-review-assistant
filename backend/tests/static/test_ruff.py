@@ -54,6 +54,25 @@ async def test_configuration_inside_the_upload_cannot_hide_findings(
     assert {"F401", "B006", "E722"} <= by_rule(result.findings).keys()
 
 
+@pytest.mark.parametrize(
+    "ignore_files",
+    [
+        {".ignore": "*.py\n"},
+        {".gitignore": "*\n", ".git/HEAD": "ref: refs/heads/main\n"},
+    ],
+    ids=["dot-ignore", "gitignore-in-repository"],
+)
+async def test_ignore_files_inside_the_upload_cannot_hide_code(
+    make_target: TargetFactory, ignore_files: dict[str, str]
+) -> None:
+    # --isolated does not stop Ruff honoring .ignore and .gitignore files.
+    target = make_target({"pkg/app.py": SAMPLE, **ignore_files})
+
+    result = await RuffAnalyzer().analyze(target)
+
+    assert {"F401", "B006", "E722"} <= by_rule(result.findings).keys()
+
+
 def test_applies_only_to_python_projects(make_target: TargetFactory) -> None:
     assert not RuffAnalyzer().applies_to(make_target({"web/app.js": "let x;\n"}))
 
