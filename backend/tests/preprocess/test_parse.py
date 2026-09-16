@@ -51,6 +51,18 @@ def test_deeply_nested_code_does_not_exhaust_recursion() -> None:
     assert regions
 
 
+def test_reports_correct_positions_for_deeply_nested_code() -> None:
+    # Regression guard: tree-sitter 0.26.0 returns corrupt positions (and can crash)
+    # beyond ~130 levels of nesting, which is why the dependency is capped below it.
+    depth = 1000
+    source = b"x = " + b"[\n" * depth + b"]\n" * depth
+
+    tree = parse_source(source, PYTHON).tree
+    statement = tree.root_node.named_children[0]
+
+    assert node_lines(statement) == LineRange(start=1, end=2 * depth)
+
+
 def test_node_lines_excludes_the_row_a_trailing_newline_ends_on() -> None:
     tree = Parser(PYTHON.grammar()).parse(b"def f():\n    return 1\n\n\nx = 2\n")
     function, assignment = tree.root_node.named_children
