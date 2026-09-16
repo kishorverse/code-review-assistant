@@ -9,7 +9,7 @@ Margin reviews a single source file or a zipped project in two passes.
 
 A router that knows each provider's rate limits sends every task to the best-suited model and falls back cleanly when a quota runs out. A verifier checks evidence and runs a second model on serious findings, so false positives are filtered out before you see them.
 
-> **Status:** in active development. The project skeleton, tooling and CI are in place; analysis features are being added module by module.
+> **Status:** in active development. Safe upload handling, structure-aware chunking and the static analysis engine with its CLI work today; LLM review, the web API and the web UI are being added module by module.
 
 ## Planned features
 
@@ -88,6 +88,19 @@ cd backend
 uv run python scripts/list_models.py
 ```
 
+### Scanning from the command line
+
+```bash
+cd backend
+uv run margin scan path/to/project            # table of findings
+uv run margin scan project.zip --format json --output report.json
+uv run margin scan src --fail-on high          # exit code 1 if any high or critical finding
+```
+
+The CLI runs Ruff, Bandit, mypy, Radon, Vulture, Lizard and detect-secrets, plus Opengrep when its binary is
+installed ([releases](https://github.com/opengrep/opengrep/releases); set `OPENGREP_PATH` if it is not on `PATH`).
+Exit codes: `0` success, `1` a finding reached `--fail-on`, `2` the input was rejected.
+
 ### Quality checks
 
 These are the same checks CI runs on every pull request.
@@ -113,6 +126,7 @@ uv run pre-commit install
 
 - [Coding rules](docs/coding-rules.md)
 - [Tech stack](docs/tech-stack.md)
+- [Static analysis engine](docs/static-analysis.md): analyzers, finding normalization, and how untrusted code is analyzed safely
 
 ## License
 

@@ -86,7 +86,7 @@ Provider limits live in `backend/config/providers.yaml`, so they can be updated 
 | Vulture | Dead code | Python |
 | Lizard | Complexity, function length, parameter count | ~20 languages |
 | detect-secrets | Hard-coded credentials (also drives redaction) | Any text |
-| Opengrep | Pattern and taint rules, using the project's own rules in `backend/rules/` | 30+ |
+| Opengrep | Pattern rules written for this project, in `backend/app/static/rules/` | Python, JavaScript, TypeScript |
 
 - **Language support.** Python gets full support. JavaScript, TypeScript, Java and Go get basic support: tree-sitter chunking, Lizard, detect-secrets, Opengrep and LLM review. Adding a language means adding its grammar package and one declarative adapter in `backend/app/languages/`.
 - **Grammars are pinned, not downloaded.** Each grammar is an official tree-sitter wheel locked in `uv.lock`. `tree-sitter-language-pack` was evaluated and rejected: its 1.x releases download compiled grammar libraries at runtime, which breaks offline scans and puts unpinned native code outside the lock file.
