@@ -10,9 +10,8 @@ from pathlib import PurePosixPath, PureWindowsPath
 from app.errors import IngestError, IngestRejection
 
 _WINDOWS_RESERVED_NAMES = frozenset(
-    {"con", "prn", "aux", "nul"}
-    | {f"com{number}" for number in range(1, 10)}
-    | {f"lpt{number}" for number in range(1, 10)}
+    {"con", "prn", "aux", "nul", "conin$", "conout$", "clock$"}
+    | {f"{port}{digit}" for port in ("com", "lpt") for digit in "123456789¹²³"}
 )
 _FORBIDDEN_CHARACTERS = frozenset('<>:"|?*') | frozenset(chr(code) for code in range(32))
 _MAX_COMPONENT_LENGTH = 255
@@ -62,7 +61,8 @@ def safe_relative_path(name: str, max_length: int) -> PurePosixPath:
 
 
 def _is_portable_component(part: str) -> bool:
-    stem = part.split(".", 1)[0].lower()
+    # Windows ignores trailing spaces before the extension, so "con .txt" is still CON.
+    stem = part.split(".", 1)[0].rstrip(" ").lower()
     return (
         len(part) <= _MAX_COMPONENT_LENGTH
         and not any(char in _FORBIDDEN_CHARACTERS for char in part)
