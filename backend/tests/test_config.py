@@ -2,14 +2,6 @@ import pytest
 
 from app.config import Settings
 
-KEY_VARS = ("GEMINI_API_KEY", "HF_TOKEN", "NVIDIA_API_KEY")
-
-
-@pytest.fixture(autouse=True)
-def clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in (*KEY_VARS, "CORS_ORIGINS", "LOG_LEVEL"):
-        monkeypatch.delenv(name, raising=False)
-
 
 def test_defaults_have_no_api_keys() -> None:
     settings = Settings(_env_file=None)

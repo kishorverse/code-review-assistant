@@ -7,6 +7,17 @@ from app.config import Settings
 from app.main import create_app
 
 
+@pytest.fixture(autouse=True)
+def isolate_settings_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the developer's or CI's real environment (e.g. exported API keys) out of tests.
+
+    ``Settings(_env_file=None)`` skips ``.env`` but still reads process environment
+    variables, so every variable a setting could come from is removed.
+    """
+    for field_name in Settings.model_fields:
+        monkeypatch.delenv(field_name.upper(), raising=False)
+
+
 @pytest.fixture
 def settings() -> Settings:
     """Settings isolated from the developer's real ``.env`` file."""
