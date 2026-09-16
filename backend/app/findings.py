@@ -12,6 +12,9 @@ from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
 
 MAX_TITLE_LENGTH = 80
 
+REDACTED_EVIDENCE = "[redacted: possible secret]"
+"""Evidence placeholder for findings about secrets, so the secret itself is never shown."""
+
 
 class Severity(StrEnum):
     """How urgently an issue needs attention, most severe first."""

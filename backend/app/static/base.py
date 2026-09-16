@@ -1,6 +1,6 @@
 """The contract every analyzer implements, and helpers for normalizing tool output."""
 
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path, PurePosixPath
@@ -8,7 +8,9 @@ from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict, NonNegativeInt
 
+from app.errors import AnalyzerError
 from app.findings import Finding
+from app.static.process import ProcessResult, minimal_environment, run_process
 
 
 class ToolStatus(StrEnum):
@@ -108,6 +110,35 @@ class Analyzer(Protocol):
             AnalyzerError: If the tool ran but its output could not be used.
         """
         ...
+
+
+async def run_tool(
+    target: AnalysisTarget,
+    argv: Sequence[str],
+    *,
+    accepted_exit_codes: Collection[int] = (0,),
+    cwd: Path | None = None,
+) -> ProcessResult:
+    """Run an analyzer command with the minimal environment.
+
+    Args:
+        target: Supplies the scratch directory used as working directory by default.
+        argv: The command.
+        accepted_exit_codes: Exit codes that mean the tool ran (many linters exit
+            non-zero when they find issues).
+        cwd: Working directory override, for tools that must run from the root.
+
+    Raises:
+        ToolUnavailableError: If the executable is missing.
+        AnalyzerError: If the tool exits with an unexpected code.
+    """
+    result = await run_process(
+        argv, cwd=cwd or target.scratch, env=minimal_environment(target.scratch)
+    )
+    if result.returncode not in accepted_exit_codes:
+        detail = next((line for line in reversed(result.stderr.splitlines()) if line.strip()), "")
+        raise AnalyzerError(f"exited with code {result.returncode}: {detail[:200]}".rstrip(": "))
+    return result
 
 
 def relative_to_root(reported: str | Path, root: Path, base: Path | None = None) -> str | None:
