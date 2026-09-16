@@ -11,7 +11,6 @@ from pathlib import PurePosixPath
 from app.languages.base import LanguageAdapter
 from app.languages.registry import LanguageRegistry
 
-_SHEBANG = re.compile(rb"#!\s*(?P<program>\S+)(?:\s+(?P<argument>\S+))?")
 _VERSION_SUFFIX = re.compile(r"[\d.]+$")
 
 
@@ -31,13 +30,31 @@ def detect_language(
 
 
 def _detect_from_shebang(head: bytes, registry: LanguageRegistry) -> LanguageAdapter | None:
-    first_line = head.split(b"\n", 1)[0].strip()
-    match = _SHEBANG.fullmatch(first_line)
-    if match is None:
+    interpreter = shebang_interpreter(head.split(b"\n", 1)[0])
+    if interpreter is None:
         return None
-    interpreter = PurePosixPath(match["program"].decode(errors="replace")).name
-    if interpreter == "env" and match["argument"]:
-        interpreter = match["argument"].decode(errors="replace")
     return registry.by_interpreter(interpreter) or registry.by_interpreter(
         _VERSION_SUFFIX.sub("", interpreter)
+    )
+
+
+def shebang_interpreter(first_line: bytes) -> str | None:
+    """Return the interpreter a shebang line runs, ignoring its arguments.
+
+    Handles ``#!/usr/bin/python3 -O`` as well as ``/usr/bin/env`` forms, where
+    env's own options (``-S``, ``-i``) and ``NAME=value`` assignments come
+    before the interpreter.
+    """
+    line = first_line.strip().decode(errors="replace")
+    if not line.startswith("#!"):
+        return None
+    words = line[2:].split()
+    if not words:
+        return None
+    program = PurePosixPath(words[0]).name
+    if program != "env":
+        return program
+    return next(
+        (word for word in words[1:] if not word.startswith("-") and "=" not in word),
+        None,
     )
