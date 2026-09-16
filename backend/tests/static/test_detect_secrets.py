@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 
@@ -38,6 +39,21 @@ async def test_finds_secrets_in_any_file_and_never_echoes_them(
         assert finding.evidence == REDACTED_EVIDENCE
         assert AWS_ACCESS_KEY not in finding.message + finding.title
         assert LOGIN_VALUE not in finding.message + finding.title
+    assert hashlib.sha1(AWS_ACCESS_KEY.encode(), usedforsecurity=False).hexdigest() in (
+        result.secret_hashes
+    )
+
+
+async def test_allowlist_comments_inside_the_upload_cannot_hide_secrets(
+    make_target: TargetFactory,
+) -> None:
+    target = make_target(
+        {"config/settings.py": f'AWS_KEY = "{AWS_ACCESS_KEY}"  # pragma: allowlist secret\n'}
+    )
+
+    result = await DetectSecretsAnalyzer().analyze(target)
+
+    assert "AWS Access Key" in by_rule(result.findings)
 
 
 def test_parse_scores_heuristic_detectors_lower_and_rejects_bad_reports(tmp_path: Path) -> None:
@@ -51,8 +67,9 @@ def test_parse_scores_heuristic_detectors_lower_and_rejects_bad_reports(tmp_path
         }
     }
 
-    key, entropy = parse_output(json.dumps(report), root)
+    (key, entropy), hashes = parse_output(json.dumps(report), root)
 
     assert (key.confidence, entropy.confidence) == (0.9, 0.6)
+    assert hashes == {"x", "y"}
     with pytest.raises(AnalyzerError):
         parse_output("{}", root)

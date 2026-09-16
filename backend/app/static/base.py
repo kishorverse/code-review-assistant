@@ -84,10 +84,15 @@ class AnalysisTarget:
 
 @dataclass(frozen=True)
 class AnalyzerResult:
-    """Findings and metrics produced by one analyzer."""
+    """Findings and metrics produced by one analyzer.
+
+    ``secret_hashes`` holds SHA-1 digests of detected secret values, used to mask
+    every copy of a secret; the values themselves are never kept.
+    """
 
     findings: list[Finding] = field(default_factory=list)
     metrics: list[FileMetrics] = field(default_factory=list)
+    secret_hashes: frozenset[str] = frozenset()
 
 
 class Analyzer(Protocol):

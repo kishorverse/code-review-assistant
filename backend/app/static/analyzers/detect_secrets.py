@@ -18,6 +18,10 @@ from app.static.process import python_tool
 NAME = "detect-secrets"
 CWE_HARDCODED_CREDENTIALS = "CWE-798"
 
+# "pragma: allowlist secret" comments serve a repository's own CI. In an upload they
+# would let the uploader hide secrets from the scan and from redaction.
+ALLOWLIST_FILTER = "detect_secrets.filters.allowlist.is_line_allowlisted"
+
 # Keyword and entropy detectors also match non-secrets such as test fixtures.
 _HEURISTIC_TYPES = frozenset(
     {"Secret Keyword", "Base64 High Entropy String", "Hex High Entropy String"}
@@ -37,14 +41,21 @@ class DetectSecretsAnalyzer:
         """Run ``detect-secrets scan --all-files`` from the scan root."""
         result = await run_tool(
             target,
-            python_tool("detect_secrets", "scan", "--all-files", "."),
+            python_tool(
+                "detect_secrets", "scan", "--all-files", "--disable-filter", ALLOWLIST_FILTER, "."
+            ),
             cwd=target.root,
         )
-        return AnalyzerResult(findings=parse_output(result.stdout, target.root))
+        findings, hashes = parse_output(result.stdout, target.root)
+        return AnalyzerResult(findings=findings, secret_hashes=hashes)
 
 
-def parse_output(stdout: str, root: Path) -> list[Finding]:
+def parse_output(stdout: str, root: Path) -> tuple[list[Finding], frozenset[str]]:
     """Normalize a detect-secrets baseline report.
+
+    Returns:
+        The findings, and the SHA-1 digests of the detected values, which let other
+        stages mask copies of a secret that detect-secrets reported only once.
 
     Raises:
         AnalyzerError: If the report is not the expected JSON.
@@ -55,11 +66,13 @@ def parse_output(stdout: str, root: Path) -> list[Finding]:
         raise AnalyzerError("detect-secrets produced an unexpected report") from error
 
     findings: list[Finding] = []
+    hashes: set[str] = set()
     for reported_path, secrets in results.items():
         path = relative_to_root(reported_path, root)
         if path is None:
             continue
         for secret in secrets:
+            hashes.add(secret["hashed_secret"])
             kind = secret["type"]
             findings.append(
                 Finding(
@@ -80,4 +93,4 @@ def parse_output(stdout: str, root: Path) -> list[Finding]:
                     cwe=CWE_HARDCODED_CREDENTIALS,
                 )
             )
-    return findings
+    return findings, frozenset(hashes)

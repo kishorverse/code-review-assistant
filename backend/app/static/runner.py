@@ -13,7 +13,8 @@ import structlog
 
 from app.errors import AnalyzerError, ToolUnavailableError
 from app.events import EventSink, FindingEvent, ToolEvent
-from app.findings import Finding
+from app.findings import REDACTED_EVIDENCE, Finding
+from app.redaction import SecretIndex
 from app.static.analyzers.bandit import BanditAnalyzer
 from app.static.analyzers.detect_secrets import DetectSecretsAnalyzer
 from app.static.analyzers.lizard import LizardAnalyzer
@@ -40,11 +41,16 @@ log = structlog.get_logger(__name__)
 
 @dataclass(frozen=True)
 class StaticAnalysisResult:
-    """Combined outcome of all analyzers."""
+    """Combined outcome of all analyzers.
+
+    ``secrets`` records where secrets were detected so later stages (such as code
+    sent to an LLM) can mask them too. It holds line numbers and hashes only.
+    """
 
     findings: list[Finding]
     tool_runs: list[ToolRun]
     metrics: list[FileMetrics]
+    secrets: SecretIndex
 
 
 def default_analyzers(opengrep_path: str | None = None) -> list[Analyzer]:
@@ -80,7 +86,8 @@ async def run_static_analysis(
         *(_run_analyzer(analyzer, target, sink, timeout_seconds) for analyzer in analyzers)
     )
     merged = deduplicate(finding for _, result in outcomes for finding in result.findings)
-    findings = await asyncio.to_thread(attach_evidence, merged, target.root)
+    secrets = secret_index(merged, [result for _, result in outcomes])
+    findings = await asyncio.to_thread(attach_evidence, merged, target.root, secrets)
     findings.sort(key=lambda f: (-f.severity.rank, f.file_path, f.start_line, f.rule_id or ""))
     for finding in findings:
         await sink.emit(FindingEvent(finding=finding))
@@ -88,7 +95,19 @@ async def run_static_analysis(
         findings=findings,
         tool_runs=[run for run, _ in outcomes],
         metrics=merge_metrics(metric for _, result in outcomes for metric in result.metrics),
+        secrets=secrets,
     )
+
+
+def secret_index(findings: Sequence[Finding], results: Sequence[AnalyzerResult]) -> SecretIndex:
+    """Collect where secrets are: lines of redacted findings and hashes of detected values."""
+    index = SecretIndex()
+    for finding in findings:
+        if finding.evidence == REDACTED_EVIDENCE:
+            index.mark_lines(finding.file_path, range(finding.start_line, finding.end_line + 1))
+    for result in results:
+        index.add_hashes(result.secret_hashes)
+    return index
 
 
 def merge_metrics(metrics: Iterable[FileMetrics]) -> list[FileMetrics]:

@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 from pathlib import Path
 
 from app.errors import AnalyzerError, ToolUnavailableError
@@ -87,6 +88,44 @@ async def test_one_failing_tool_does_not_fail_the_scan(make_target: TargetFactor
     assert result.findings[1].sources == ["ruff", "vulture"]
     assert result.findings[1].evidence == "import os"
     assert result.findings[0].evidence == REDACTED_EVIDENCE
+
+
+async def test_secrets_are_masked_in_every_finding_including_copies_on_other_lines(
+    make_target: TargetFactory,
+) -> None:
+    key = "AKIA" + "IOSFODNN7" + "EXAMPLE"
+    source = f'AWS_KEY = "{key}"  # a long line that ruff also reports\nx = 1\nCOPY = "{key}"\n'
+    target = make_target({"app.py": source})
+    secrets = FakeAnalyzer(
+        "detect-secrets",
+        AnalyzerResult(
+            findings=[
+                issue(
+                    "detect-secrets", "AWS Access Key", 1, Severity.HIGH, evidence=REDACTED_EVIDENCE
+                )
+            ],
+            secret_hashes=frozenset(
+                {hashlib.sha1(key.encode(), usedforsecurity=False).hexdigest()}
+            ),
+        ),
+    )
+    style = FakeAnalyzer(
+        "ruff",
+        AnalyzerResult(
+            findings=[
+                issue("ruff", "E501", 1, Severity.LOW),
+                issue("lizard", "long-block", 1, Severity.LOW, end_line=3),
+            ]
+        ),
+    )
+
+    result = await run_static_analysis(target, [secrets, style], CollectingSink())
+
+    evidence = {f.rule_id: f.evidence or "" for f in result.findings}
+    assert evidence["E501"] == REDACTED_EVIDENCE
+    assert evidence["long-block"].splitlines() == [REDACTED_EVIDENCE, "x = 1", REDACTED_EVIDENCE]
+    assert all(key not in text for text in evidence.values())
+    assert result.secrets.is_sensitive("app.py", 1, "")
 
 
 async def test_emits_tool_events_and_final_findings(make_target: TargetFactory) -> None:
