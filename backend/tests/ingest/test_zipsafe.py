@@ -74,6 +74,23 @@ def test_does_not_list_directory_entries_as_files(tmp_path: Path, destination: P
     assert result.files == ["src/main.py"]
 
 
+def test_treats_backslash_terminated_entries_as_directories(
+    tmp_path: Path, destination: Path
+) -> None:
+    archive = tmp_path / "windows-tool.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        folder = zipfile.ZipInfo("placeholder")
+        folder.filename = "src\\"
+        zf.writestr(folder, b"")
+        file = zipfile.ZipInfo("placeholder")
+        file.filename = "src\\main.py"
+        zf.writestr(file, b"print('hi')\n")
+
+    result = extract_archive(archive, destination, LIMITS)
+
+    assert result.files == ["src/main.py"]
+
+
 def test_skips_filtered_files_without_writing_them(tmp_path: Path, destination: Path) -> None:
     limits = IngestLimits(max_file_bytes=1024)
     archive = make_zip(

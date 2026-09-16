@@ -100,7 +100,8 @@ def _validate_members(
                 f"The archive contains the same path more than once ({quote_name(info.filename)}).",
             )
         seen.add(key)
-        if info.is_dir():
+        # ZipInfo.is_dir() only recognizes "/", but Windows tools may write "src\" entries.
+        if info.filename.endswith(("/", "\\")):
             continue
 
         members.append(_Member(info, path))
