@@ -9,7 +9,7 @@ Margin reviews a single source file or a zipped project in two passes.
 
 A router that knows each provider's rate limits sends every task to the best-suited model and falls back cleanly when a quota runs out. A verifier checks evidence and runs a second model on serious findings, so false positives are filtered out before you see them.
 
-> **Status:** in active development. Setup and usage instructions are added as each module lands.
+> **Status:** in active development. The project skeleton, tooling and CI are in place; analysis features are being added module by module.
 
 ## Planned features
 
@@ -38,12 +38,75 @@ upload (file / .zip)
 ## Repository layout
 
 ```
-backend/     FastAPI service, analysis pipeline, CLI
-frontend/    React web interface
-eval/        datasets, evaluation and benchmark scripts
-notebooks/   Colab demo
-docs/        design and engineering documentation
-scripts/     developer utilities
+backend/            FastAPI service, analysis pipeline, CLI
+  app/              application package
+  scripts/          developer utilities (e.g. model discovery)
+  tests/            pytest suite
+frontend/           React + TypeScript web interface
+docs/               design and engineering documentation
+.github/workflows/  continuous integration
+```
+
+## Development setup
+
+### Prerequisites
+
+| Tool | Version |
+|---|---|
+| [Python](https://www.python.org/downloads/) | 3.11 or newer (3.12 recommended) |
+| [uv](https://docs.astral.sh/uv/getting-started/installation/) | recent release |
+| [Node.js](https://nodejs.org/) | 22.12 or newer (24 LTS recommended) |
+| Git | any recent version |
+
+### Backend
+
+```bash
+cd backend
+cp .env.example .env    # optional for now: the service starts without API keys
+uv sync
+uv run uvicorn app.main:create_app --factory --reload
+```
+
+The API runs at http://127.0.0.1:8000, with interactive docs at http://127.0.0.1:8000/docs.
+
+### Frontend
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+Open http://localhost:5173. Requests to `/api` are proxied to the backend.
+
+### LLM provider keys
+
+Margin uses Google Gemini, Hugging Face Inference Providers and NVIDIA NIM. Add the keys to `backend/.env` (links to create each key are in `.env.example`), then list the model ids your keys can use:
+
+```bash
+cd backend
+uv run python scripts/list_models.py
+```
+
+### Quality checks
+
+These are the same checks CI runs on every pull request.
+
+```bash
+# backend
+cd backend
+uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest --cov
+
+# frontend
+cd frontend
+npm run format:check && npm run lint && npm run typecheck && npm test && npm run build
+```
+
+Install the pre-commit hooks once so formatting, linting and secret scanning run before every commit:
+
+```bash
+cd backend
+uv run pre-commit install
 ```
 
 ## Documentation
