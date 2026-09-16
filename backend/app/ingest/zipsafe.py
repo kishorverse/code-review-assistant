@@ -185,7 +185,15 @@ def _extract_members(
                 skipped.append(SkippedFile(path=relative, reason=reason))
                 continue
             target = _target_path(root, member.path)
-            write_limited(chain((head,), _chunks(source)), target, member.info.file_size)
+            try:
+                write_limited(chain((head,), _chunks(source)), target, member.info.file_size)
+            except (FileExistsError, NotADirectoryError) as error:
+                # Names can still collide on disk, e.g. with Windows 8.3 short names.
+                raise IngestError(
+                    IngestRejection.DUPLICATE_ENTRY,
+                    f"The archive contains paths that collide on this system "
+                    f"({quote_name(relative)}).",
+                ) from error
         files.append(relative)
 
     return IngestResult(

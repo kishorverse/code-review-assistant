@@ -183,6 +183,18 @@ def test_rejects_duplicate_entries_that_differ_only_in_case(
     extract_expecting(archive, destination, IngestRejection.DUPLICATE_ENTRY)
 
 
+def test_reports_names_that_collide_on_disk_as_duplicates(
+    tmp_path: Path, destination: Path
+) -> None:
+    # Stands in for collisions only the filesystem can detect, such as Windows 8.3
+    # short names ("LONGDI~1" and "longdirectoryname") that pass name validation.
+    destination.mkdir(parents=True)
+    (destination / "pkg").write_text("already a file")
+    archive = make_zip(tmp_path / "collide.zip", {"pkg/module.py": b"x = 1\n"})
+
+    extract_expecting(archive, destination, IngestRejection.DUPLICATE_ENTRY)
+
+
 def test_rejects_path_used_as_both_file_and_directory(tmp_path: Path, destination: Path) -> None:
     archive = make_zip(tmp_path / "clash.zip", {"src": b"file\n", "src/main.py": b"code\n"})
 
