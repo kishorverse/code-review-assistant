@@ -117,8 +117,18 @@ def _boundaries(
         comment_start = None
         if start > covered_until:
             boundaries.append(_Boundary(start=max(start, region.first), node=node))
+        elif boundaries and _spans_further(node, boundaries[-1].node):
+            # In `const Foo = () => {...}` the name and the arrow function start on the
+            # same line; the arrow function is the part worth splitting further.
+            boundaries[-1] = _Boundary(start=boundaries[-1].start, node=node)
         covered_until = max(covered_until, lines.end)
     return boundaries
+
+
+def _spans_further(candidate: Node, current: Node) -> bool:
+    """Whether ``candidate`` starts on the same line as ``current`` but ends later."""
+    candidate_lines, current_lines = node_lines(candidate), node_lines(current)
+    return candidate_lines.start == current_lines.start and candidate_lines.end > current_lines.end
 
 
 def _fit(region: _Region, node: Node, adapter: LanguageAdapter, max_lines: int) -> list[Segment]:

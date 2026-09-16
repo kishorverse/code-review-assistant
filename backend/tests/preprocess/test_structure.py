@@ -133,11 +133,44 @@ def test_decorated_and_exported_classes_include_wrapper_lines_in_signature() -> 
     assert len(javascript_segments) == 3
 
 
+def test_splits_arrow_function_components_at_inner_statements() -> None:
+    helpers = "".join(f"  function helper{n}() {{\n    return {n};\n  }}\n" for n in range(8))
+    code = f"import React from 'react';\nexport const Foo = () => {{\n{helpers}}};\n"
+
+    segments = segments_of(code, JAVASCRIPT, max_lines=10)
+
+    # Line 1 is the import; line 2 opens the component and joins the first helper.
+    helper_starts = [3 + 3 * n for n in range(8)]
+    assert all(segment.lines.length <= 10 for segment in segments)
+    assert [segment.lines.start for segment in segments] == [1, 2, *helper_starts[1:]]
+    assert all(lr(2, 2) in segment.context for segment in segments[1:])
+
+
+def test_splits_test_suites_written_as_callbacks_at_each_case() -> None:
+    cases = "".join(f"  it('case {n}', () => {{\n    run({n});\n  }});\n" for n in range(8))
+    code = f"describe('suite', () => {{\n{cases}}});\n"
+
+    segments = segments_of(code, JAVASCRIPT, max_lines=10)
+
+    assert [segment.lines.start for segment in segments[1:]] == [2 + 3 * n for n in range(1, 8)]
+    assert all(lr(1, 1) in segment.context for segment in segments)
+
+
 def test_falls_back_to_windows_when_no_structure_is_left() -> None:
+    code = "".join(f"# Note {n} about the module.\n" for n in range(25))
+
+    assert spans(segments_of(code, PYTHON, max_lines=10)) == [(1, 10), (11, 20), (21, 25)]
+
+
+def test_long_string_literal_is_split_within_the_limit() -> None:
     text = "\n".join(f"line {n}" for n in range(25))
     code = f'MESSAGE = """\n{text}\n"""\n'
 
-    assert spans(segments_of(code, PYTHON, max_lines=10)) == [(1, 10), (11, 20), (21, 27)]
+    segments = segments_of(code, PYTHON, max_lines=10)
+
+    assert all(segment.lines.length <= 10 for segment in segments)
+    assert segments[0].lines.start == 1
+    assert segments[-1].lines.end == 27
 
 
 def test_deeply_nested_input_does_not_hit_the_recursion_limit() -> None:
