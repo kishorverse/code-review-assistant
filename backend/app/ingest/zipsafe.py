@@ -9,6 +9,7 @@ If extraction fails part-way, the destination directory is emptied again.
 Extraction is blocking I/O; call it with ``asyncio.to_thread`` from async code.
 """
 
+import lzma
 import shutil
 import stat
 import zipfile
@@ -25,7 +26,13 @@ from app.ingest.paths import quote_name, safe_relative_path
 
 _COPY_CHUNK_BYTES = 64 * 1024
 _ENCRYPTED_FLAG = 0x1
-_UNREADABLE_ARCHIVE_ERRORS = (zipfile.BadZipFile, zlib.error, EOFError, NotImplementedError)
+_CORRUPT_DATA_ERRORS = (
+    zipfile.BadZipFile,
+    zlib.error,
+    lzma.LZMAError,
+    EOFError,
+    NotImplementedError,
+)
 
 
 class _Member(NamedTuple):
@@ -60,16 +67,20 @@ def extract_archive(archive: Path, destination: Path, limits: IngestLimits) -> I
         with zipfile.ZipFile(archive) as zip_file:
             members = _validate_members(zip_file.infolist(), archive_size, limits)
             return _extract_members(zip_file, members, destination, limits)
-    except _UNREADABLE_ARCHIVE_ERRORS as error:
+    except _CORRUPT_DATA_ERRORS as error:
         _clear_directory(destination)
-        raise IngestError(
-            IngestRejection.CORRUPT_ARCHIVE,
-            "The file could not be read as a zip archive. "
-            "It may be corrupt or use an unsupported compression method.",
-        ) from error
+        raise _corrupt_archive_error() from error
     except BaseException:
         _clear_directory(destination)
         raise
+
+
+def _corrupt_archive_error() -> IngestError:
+    return IngestError(
+        IngestRejection.CORRUPT_ARCHIVE,
+        "The file could not be read as a zip archive. "
+        "It may be corrupt or use an unsupported compression method.",
+    )
 
 
 def _validate_members(
@@ -167,7 +178,7 @@ def _extract_members(
             skipped.append(SkippedFile(path=relative, reason=reason))
             continue
         with zip_file.open(member.info) as source:
-            head = source.read(BINARY_SNIFF_BYTES)
+            head = _read_member(source, BINARY_SNIFF_BYTES)
             reason = skip_reason_for_content(member.info.file_size, head, limits.max_file_bytes)
             if reason is not None:
                 skipped.append(SkippedFile(path=relative, reason=reason))
@@ -211,8 +222,17 @@ def write_limited(chunks: Iterable[bytes], target: Path, max_bytes: int) -> int:
 
 
 def _chunks(source: IO[bytes]) -> Iterator[bytes]:
-    while chunk := source.read(_COPY_CHUNK_BYTES):
+    while chunk := _read_member(source, _COPY_CHUNK_BYTES):
         yield chunk
+
+
+def _read_member(source: IO[bytes], size: int) -> bytes:
+    try:
+        return source.read(size)
+    except OSError as error:
+        # bz2 reports corrupt compressed data as a bare OSError("Invalid data stream").
+        # Only reads are converted, so disk errors while writing are not mislabeled.
+        raise _corrupt_archive_error() from error
 
 
 def _target_path(root: Path, relative: PurePosixPath) -> Path:

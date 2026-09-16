@@ -42,8 +42,8 @@ target-version = "py311"
 select = ["E", "W", "F", "I", "B", "UP", "SIM", "N", "S", "ASYNC", "PERF", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
-# pytest relies on plain assert statements.
-"tests/**" = ["S101"]
+# Tests use plain asserts (S101) and seeded pseudo-random data for reproducible fixtures (S311).
+"tests/**" = ["S101", "S311"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]

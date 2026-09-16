@@ -1,4 +1,5 @@
 import io
+import random
 import stat
 import warnings
 import zipfile
@@ -222,6 +223,27 @@ def test_rejects_file_that_is_not_a_zip(tmp_path: Path, destination: Path) -> No
     fake.write_bytes(b"this is plain text, not an archive")
 
     extract_expecting(fake, destination, IngestRejection.CORRUPT_ARCHIVE)
+
+
+@pytest.mark.parametrize(
+    "compression",
+    [zipfile.ZIP_DEFLATED, zipfile.ZIP_BZIP2, zipfile.ZIP_LZMA],
+    ids=["deflate", "bzip2", "lzma"],
+)
+def test_reports_damaged_compressed_data_as_corrupt_for_every_method(
+    tmp_path: Path, destination: Path, compression: int
+) -> None:
+    content = random.Random(7).randbytes(4000).hex().encode()
+    archive = make_zip(tmp_path / "damaged.zip", {"data.py": content}, compression=compression)
+    data = bytearray(archive.read_bytes())
+    name_length = int.from_bytes(data[26:28], "little")
+    extra_length = int.from_bytes(data[28:30], "little")
+    damage_start = 30 + name_length + extra_length + 200
+    for index in range(damage_start, damage_start + 16):
+        data[index] ^= 0xFF
+    archive.write_bytes(bytes(data))
+
+    extract_expecting(archive, destination, IngestRejection.CORRUPT_ARCHIVE)
 
 
 def test_removes_already_extracted_files_when_a_later_entry_is_corrupt(
