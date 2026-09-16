@@ -55,8 +55,9 @@ target-version = "py311"
 select = ["E", "W", "F", "I", "B", "UP", "SIM", "N", "S", "ASYNC", "PERF", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
-# Tests use plain asserts (S101) and seeded pseudo-random data for reproducible fixtures (S311).
-"tests/**" = ["S101", "S311"]
+# Tests use plain asserts (S101), seeded pseudo-random fixture data (S311) and blocking
+# filesystem checks inside async tests (ASYNC240); application code keeps all three rules.
+"tests/**" = ["S101", "S311", "ASYNC240"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]

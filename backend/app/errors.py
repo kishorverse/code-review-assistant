@@ -44,3 +44,11 @@ class IngestError(MarginError):
         super().__init__(message)
         self.reason = reason
         self.message = message
+
+
+class AnalyzerError(MarginError):
+    """An analyzer could not produce results; the scan continues without them."""
+
+
+class ToolUnavailableError(AnalyzerError):
+    """The analyzer's executable is not installed, so the analyzer is skipped."""
