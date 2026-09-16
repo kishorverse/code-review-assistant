@@ -4,6 +4,7 @@ from pathlib import Path
 from app.errors import AnalyzerError, ToolUnavailableError
 from app.events import CollectingSink, FindingEvent, ToolEvent
 from app.findings import REDACTED_EVIDENCE, Category, Finding, Severity
+from app.static.analyzers.opengrep import find_executable
 from app.static.base import (
     AnalysisTarget,
     AnalyzerResult,
@@ -146,7 +147,10 @@ async def test_default_analyzers_run_end_to_end_on_a_real_project(
 
     result = await run_static_analysis(target, default_analyzers(), CollectingSink())
 
-    assert {run.status for run in result.tool_runs} == {ToolStatus.OK}
+    statuses = {run.tool: run.status for run in result.tool_runs}
+    opengrep_expected = ToolStatus.OK if find_executable() else ToolStatus.SKIPPED
+    assert statuses.pop("opengrep") is opengrep_expected
+    assert set(statuses.values()) == {ToolStatus.OK}
     assert result.findings[0].rule_id == "B602"
     unused = next(f for f in result.findings if f.rule_id == "F401")
     assert set(unused.sources) == {"ruff", "vulture"}

@@ -18,6 +18,7 @@ from app.static.analyzers.bandit import BanditAnalyzer
 from app.static.analyzers.detect_secrets import DetectSecretsAnalyzer
 from app.static.analyzers.lizard import LizardAnalyzer
 from app.static.analyzers.mypy import MypyAnalyzer
+from app.static.analyzers.opengrep import OpengrepAnalyzer, find_executable
 from app.static.analyzers.radon import RadonAnalyzer
 from app.static.analyzers.ruff import RuffAnalyzer
 from app.static.analyzers.vulture import VultureAnalyzer
@@ -46,8 +47,12 @@ class StaticAnalysisResult:
     metrics: list[FileMetrics]
 
 
-def default_analyzers() -> list[Analyzer]:
-    """The analyzers Margin runs by default."""
+def default_analyzers(opengrep_path: str | None = None) -> list[Analyzer]:
+    """The analyzers Margin runs by default.
+
+    Args:
+        opengrep_path: Opengrep binary to use instead of the one on ``PATH``.
+    """
     return [
         RuffAnalyzer(),
         BanditAnalyzer(),
@@ -56,6 +61,7 @@ def default_analyzers() -> list[Analyzer]:
         VultureAnalyzer(),
         LizardAnalyzer(),
         DetectSecretsAnalyzer(),
+        OpengrepAnalyzer(find_executable(opengrep_path)),
     ]
 
 

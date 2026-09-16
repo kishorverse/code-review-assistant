@@ -21,6 +21,7 @@ from rich.console import Console
 from rich.table import Table
 
 from app import __version__
+from app.config import get_settings
 from app.errors import IngestError
 from app.events import ScanEvent, StageEvent, ToolEvent
 from app.findings import Severity
@@ -28,6 +29,7 @@ from app.ingest.storage import ScanStorage, new_scan_id
 from app.log import configure_logging
 from app.pipeline import ScanResult, ScanSettings, directory_ingest, run_scan, upload_ingest
 from app.static.base import ToolStatus
+from app.static.runner import default_analyzers
 
 EXIT_FINDINGS_AT_THRESHOLD = 1
 EXIT_REJECTED = 2
@@ -91,9 +93,16 @@ def scan(
             if path.is_dir()
             else upload_ingest(path, path.name, settings.limits)
         )
+        analyzers = default_analyzers(get_settings().opengrep_path)
         try:
             result = asyncio.run(
-                run_scan(ingest, workspace, ProgressSink(progress), settings=settings)
+                run_scan(
+                    ingest,
+                    workspace,
+                    ProgressSink(progress),
+                    settings=settings,
+                    analyzers=analyzers,
+                )
             )
         except IngestError as error:
             Console(stderr=True).print(f"[red]Rejected:[/red] {error.message}")

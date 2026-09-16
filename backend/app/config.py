@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     nvidia_api_key: SecretStr | None = None
     nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
 
+    opengrep_path: str | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:
