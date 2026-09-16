@@ -32,6 +32,19 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked
 
+      - name: Install Opengrep
+        env:
+          OPENGREP_VERSION: v1.30.0
+          # Public release checksum, not a secret.
+          OPENGREP_SHA256: 35779bdd72e92129c8df2a77f0c55e8c08356801ea92591ef32108d6b28d564c  # pragma: allowlist secret
+        run: |
+          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/opengrep" \
+            "https://github.com/opengrep/opengrep/releases/download/${OPENGREP_VERSION}/opengrep_manylinux_x86"
+          echo "${OPENGREP_SHA256}  $RUNNER_TEMP/opengrep" | sha256sum --check --strict
+          mkdir -p "$HOME/.local/bin"
+          install -m 0755 "$RUNNER_TEMP/opengrep" "$HOME/.local/bin/opengrep"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
       - name: Lint
         run: uv run ruff check .
 
