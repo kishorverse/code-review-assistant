@@ -43,7 +43,7 @@ Dependencies such as providers, the clock, analyzers and the storage root are pa
 | Package manager | `uv`, with `uv.lock` committed |
 | Formatter | `ruff format` |
 | Linter | `ruff check` with rule sets `E, W, F, I, B, UP, SIM, N, S, ASYNC, PERF, RUF`; line length 100 |
-| Type checker | `mypy --strict` on `app/`. Overrides only for untyped third-party packages, each with a comment explaining why. |
+| Type checker | `mypy --strict` on `app/` and `scripts/`. Overrides only for untyped third-party packages, each with a comment explaining why. |
 | Tests | `pytest`, `pytest-asyncio`, `pytest-cov`, `respx` |
 
 ### Style
@@ -148,9 +148,10 @@ Secrets or `.env` files, virtual environments, `node_modules/`, build output, da
 A pull request is ready to merge when:
 
 - [ ] `uv run ruff check .` and `uv run ruff format --check .` pass
-- [ ] `uv run mypy app` passes
-- [ ] `uv run pytest` passes and coverage has not dropped
-- [ ] Frontend changes pass `npm run lint`, `npm run typecheck`, `npm run test` and `npm run build`
+- [ ] `uv run mypy` passes
+- [ ] `uv run pytest --cov` passes and coverage has not dropped
+- [ ] Frontend changes pass `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test` and `npm run build`
+- [ ] Pre-commit hooks pass (`uv run pre-commit run --all-files` from `backend/`)
 - [ ] New behavior is covered by tests, including error paths
 - [ ] There are no secrets, debug output or dead code
 - [ ] Documentation and the README reflect any user-visible change
