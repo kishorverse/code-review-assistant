@@ -12,6 +12,10 @@ class MarginError(Exception):
     """Base class for all errors raised by Margin."""
 
 
+class InvalidScanIdError(MarginError):
+    """A scan id is not in the format Margin generates, so it cannot name a scan."""
+
+
 class IngestRejection(StrEnum):
     """Stable machine-readable reasons an upload was refused."""
 
