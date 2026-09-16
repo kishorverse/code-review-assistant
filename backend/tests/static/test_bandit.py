@@ -61,11 +61,13 @@ async def test_hardcoded_password_is_never_echoed(make_target: TargetFactory) ->
     assert HIDDEN_VALUE not in password.title
 
 
-async def test_bandit_file_inside_the_upload_cannot_skip_checks(
+async def test_bandit_file_inside_the_upload_cannot_limit_or_break_checks(
     make_target: TargetFactory,
 ) -> None:
+    # Without --ini, Bandit reads this file from the scanned project: `tests` limits the run
+    # to assert checks and conflicts with the command-line skips, so no report is produced.
     target = make_target(
-        {"app/tasks.py": SAMPLE, ".bandit": "[bandit]\nskips = B602,B301,B506\nexclude = ./\n"}
+        {"app/tasks.py": SAMPLE, ".bandit": "[bandit]\ntests = B101\nskips = B602,B301,B506\n"}
     )
 
     result = await BanditAnalyzer().analyze(target)
