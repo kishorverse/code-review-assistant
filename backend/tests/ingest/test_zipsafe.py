@@ -229,13 +229,38 @@ def test_removes_already_extracted_files_when_a_later_entry_is_corrupt(
 ) -> None:
     archive = make_zip(
         tmp_path / "corrupt.zip",
-        {"a_first.py": b"print('extracted first')\n", "b_second.py": b"ORIGINAL-CONTENT-MARKER"},
+        {
+            "first.py": b"print('extracted first')\n",
+            "pkg/second.py": b"print('extracted second')\n",
+            "pkg/third.py": b"ORIGINAL-CONTENT-MARKER",
+        },
         compression=zipfile.ZIP_STORED,
     )
     data = archive.read_bytes()
     archive.write_bytes(data.replace(b"ORIGINAL-CONTENT-MARKER", b"TAMPERED-CONTENT-MARKER"))
 
     extract_expecting(archive, destination, IngestRejection.CORRUPT_ARCHIVE)
+
+    assert list(destination.iterdir()) == []
+
+
+def test_refuses_to_write_through_a_symlink_already_in_the_destination(
+    tmp_path: Path, destination: Path
+) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    destination.mkdir(parents=True)
+    try:
+        (destination / "linked").symlink_to(outside, target_is_directory=True)
+    except OSError:
+        pytest.skip("creating symlinks requires extra privileges on this platform")
+    archive = make_zip(tmp_path / "through-link.zip", {"linked/evil.py": b"pwned\n"})
+
+    with pytest.raises(IngestError) as caught:
+        extract_archive(archive, destination, LIMITS)
+
+    assert caught.value.reason is IngestRejection.PATH_TRAVERSAL
+    assert list(outside.iterdir()) == []
 
 
 def test_write_limited_refuses_content_longer_than_declared(tmp_path: Path) -> None:
