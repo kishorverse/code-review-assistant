@@ -38,7 +38,7 @@ def safe_relative_path(name: str, max_length: int) -> PurePosixPath:
     if normalized.startswith("/") or PureWindowsPath(normalized).drive:
         raise IngestError(
             IngestRejection.PATH_TRAVERSAL,
-            f"The upload contains an absolute path ({_display(name)}). "
+            f"The upload contains an absolute path ({quote_name(name)}). "
             "Archive the project folder itself, not absolute paths.",
         )
 
@@ -46,17 +46,17 @@ def safe_relative_path(name: str, max_length: int) -> PurePosixPath:
     if ".." in parts:
         raise IngestError(
             IngestRejection.PATH_TRAVERSAL,
-            f"The upload contains a path that points outside the project ({_display(name)}).",
+            f"The upload contains a path that points outside the project ({quote_name(name)}).",
         )
     if not parts or len(normalized) > max_length:
         raise IngestError(
             IngestRejection.INVALID_PATH,
-            f"The upload contains an empty or overly long path ({_display(name)}).",
+            f"The upload contains an empty or overly long path ({quote_name(name)}).",
         )
     if not all(_is_portable_component(part) for part in parts):
         raise IngestError(
             IngestRejection.INVALID_PATH,
-            f"The upload contains a file name that is not valid on all systems ({_display(name)}).",
+            f"The upload contains a file name that is not portable ({quote_name(name)}).",
         )
     return PurePosixPath(*parts)
 
@@ -71,7 +71,7 @@ def _is_portable_component(part: str) -> bool:
     )
 
 
-def _display(name: str) -> str:
+def quote_name(name: str) -> str:
     """Quote a name for an error message without echoing control characters."""
     shown = name if len(name) <= _MAX_DISPLAY_LENGTH else name[:_MAX_DISPLAY_LENGTH] + "…"
     return repr(shown)
