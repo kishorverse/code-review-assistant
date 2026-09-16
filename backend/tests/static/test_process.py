@@ -72,5 +72,25 @@ async def test_missing_executable_is_reported_as_unavailable(tmp_path: Path) -> 
         )
 
 
-def test_python_tool_uses_the_backend_interpreter() -> None:
-    assert python_tool("ruff", "check") == [sys.executable, "-m", "ruff", "check"]
+def test_python_tool_uses_the_backend_interpreter_in_isolated_mode() -> None:
+    command = python_tool("ruff", "check")
+
+    assert command[0] == sys.executable
+    assert "-I" in command
+    assert command[-3:] == ["-m", "ruff", "check"]
+
+
+async def test_uploaded_module_in_working_directory_cannot_shadow_the_tool(
+    tmp_path: Path,
+) -> None:
+    marker = tmp_path / "SHADOW_EXECUTED"
+    (tmp_path / "json.py").write_text(
+        f"import pathlib\npathlib.Path({str(marker)!r}).touch()\nraise SystemExit(99)\n"
+    )
+
+    result = await run_process(
+        python_tool("json.tool", "--help"), cwd=tmp_path, env=minimal_environment(tmp_path)
+    )
+
+    assert not marker.exists()
+    assert result.returncode == 0

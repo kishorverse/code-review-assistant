@@ -35,8 +35,14 @@ def python_tool(module: str, *arguments: str) -> list[str]:
 
     Using ``sys.executable -m`` pins the tool to the locked version installed
     alongside the backend instead of whatever is on ``PATH``.
+
+    ``-I`` (isolated mode) is essential: plain ``python -m`` puts the working
+    directory first on ``sys.path``, so an uploaded file named like a module
+    the tool imports (``json.py``, ``detect_secrets.py``) would be executed.
+    Isolated mode also ignores ``PYTHON*`` variables, so ``-B`` and ``-X utf8``
+    are passed as flags instead.
     """
-    return [sys.executable, "-m", module, *arguments]
+    return [sys.executable, "-I", "-B", "-X", "utf8", "-m", module, *arguments]
 
 
 def minimal_environment(scratch: Path, platform: Mapping[str, str] = os.environ) -> dict[str, str]:
