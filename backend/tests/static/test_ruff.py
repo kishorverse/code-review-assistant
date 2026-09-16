@@ -35,14 +35,19 @@ async def test_reports_style_bug_and_maintainability_issues(make_target: TargetF
     assert all(finding.sources == ["ruff"] for finding in result.findings)
 
 
-async def test_configuration_inside_the_upload_is_ignored(make_target: TargetFactory) -> None:
-    target = make_target(
-        {
-            "pkg/app.py": SAMPLE,
-            "pyproject.toml": '[tool.ruff.lint]\nignore = ["F401", "B006", "E722"]\n',
-            "ruff.toml": '[lint]\nignore = ["F401"]\n',
-        }
-    )
+@pytest.mark.parametrize(
+    "hiding_config",
+    [
+        'extend-exclude = ["pkg"]\n',
+        'include = ["nothing.py"]\n',
+        '[lint.per-file-ignores]\n"*" = ["F401", "B006", "E722"]\n',
+    ],
+)
+async def test_configuration_inside_the_upload_cannot_hide_findings(
+    make_target: TargetFactory, hiding_config: str
+) -> None:
+    # Without --isolated each of these would silently remove every finding below.
+    target = make_target({"pkg/app.py": SAMPLE, "ruff.toml": hiding_config})
 
     result = await RuffAnalyzer().analyze(target)
 
