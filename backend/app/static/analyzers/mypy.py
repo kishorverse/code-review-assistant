@@ -55,23 +55,29 @@ class MypyAnalyzer:
         )
         result = await run_tool(
             target,
-            python_tool(
-                "mypy",
-                "--config-file=",
-                "--cache-dir",
-                str(target.scratch / CACHE_DIRECTORY),
-                "--ignore-missing-imports",
-                "--follow-imports=skip",
-                "--explicit-package-bases",
-                "--no-error-summary",
-                "--output",
-                "json",
-                f"@{argument_file}",
-            ),
+            mypy_command(target, argument_file),
             accepted_exit_codes=(0, 1),
             extra_environment={"MYPYPATH": str(target.root)},
         )
         return AnalyzerResult(findings=parse_output(result.stdout, target.root))
+
+
+def mypy_command(target: AnalysisTarget, argument_file: Path) -> list[str]:
+    """The mypy command. Running from the scratch directory and ``--config-file=``
+    are independent defenses against configuration inside the upload."""
+    return python_tool(
+        "mypy",
+        "--config-file=",
+        "--cache-dir",
+        str(target.scratch / CACHE_DIRECTORY),
+        "--ignore-missing-imports",
+        "--follow-imports=skip",
+        "--explicit-package-bases",
+        "--no-error-summary",
+        "--output",
+        "json",
+        f"@{argument_file}",
+    )
 
 
 def parseable_python_files(target: AnalysisTarget) -> list[str]:

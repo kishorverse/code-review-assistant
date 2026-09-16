@@ -5,7 +5,13 @@ import pytest
 
 from app.errors import AnalyzerError
 from app.findings import Category
-from app.static.analyzers.mypy import MypyAnalyzer, parse_output, parseable_python_files
+from app.static.analyzers.mypy import (
+    MypyAnalyzer,
+    mypy_command,
+    parse_output,
+    parseable_python_files,
+)
+from app.static.base import AnalysisTarget, run_tool
 from tests.static.conftest import TargetFactory
 
 TYPE_ERROR = "def label(count: int) -> str:\n    return count\n"
@@ -44,10 +50,7 @@ async def test_broken_files_do_not_block_checking_the_rest(make_target: TargetFa
     }
 
 
-async def test_plugins_configured_inside_the_upload_never_run(
-    make_target: TargetFactory, tmp_path: Path
-) -> None:
-    marker = tmp_path / "PLUGIN_EXECUTED"
+def plugin_project(make_target: TargetFactory, marker: Path) -> AnalysisTarget:
     plugin = (
         "import pathlib\n"
         f"pathlib.Path({str(marker)!r}).touch()\n"
@@ -55,19 +58,43 @@ async def test_plugins_configured_inside_the_upload_never_run(
         "    from mypy.plugin import Plugin\n"
         "    return Plugin\n"
     )
-    target = make_target(
+    return make_target(
         {
             "evil_plugin.py": plugin,
             "mypy.ini": "[mypy]\nplugins = evil_plugin.py\nignore_errors = True\n",
-            "pyproject.toml": '[tool.mypy]\nplugins = ["evil_plugin"]\n',
             "app.py": TYPE_ERROR,
         }
     )
+
+
+async def test_plugins_configured_inside_the_upload_never_run(
+    make_target: TargetFactory, tmp_path: Path
+) -> None:
+    marker = tmp_path / "PLUGIN_EXECUTED"
+    target = plugin_project(make_target, marker)
 
     result = await MypyAnalyzer().analyze(target)
 
     assert not marker.exists()
     assert any(f.file_path == "app.py" for f in result.findings)
+
+
+async def test_configuration_stays_disabled_even_when_run_from_the_project(
+    make_target: TargetFactory, tmp_path: Path
+) -> None:
+    # The analyzer runs from the scratch directory; this checks the second, independent
+    # defense by running the same command from inside the uploaded project.
+    marker = tmp_path / "PLUGIN_EXECUTED"
+    target = plugin_project(make_target, marker)
+    argument_file = target.scratch / "files.txt"
+    argument_file.write_text(str(target.root / "app.py") + "\n", encoding="utf-8")
+
+    result = await run_tool(
+        target, mypy_command(target, argument_file), accepted_exit_codes=(0, 1), cwd=target.root
+    )
+
+    assert not marker.exists()
+    assert "return-value" in result.stdout
 
 
 def test_parseable_files_excludes_syntax_errors_and_non_python(
