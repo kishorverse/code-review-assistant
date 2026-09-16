@@ -9,6 +9,7 @@ honor the privacy promise that uploaded code is not kept.
 
 import re
 import shutil
+import stat
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -85,7 +86,8 @@ class ScanStorage:
 
         Age is measured from the workspace directory's modification time, which
         is set when the workspace is created. Entries that are not scan
-        workspaces are left alone.
+        workspace directories (including symlinks) are left alone, and a
+        workspace deleted concurrently is simply skipped.
 
         Args:
             max_age: How long uploaded code may be kept.
@@ -97,13 +99,15 @@ class ScanStorage:
         if not self._root.is_dir():
             return []
         cutoff = (now - max_age).timestamp()
-        expired = sorted(
-            entry
-            for entry in self._root.iterdir()
-            if entry.is_dir()
-            and _SCAN_ID_PATTERN.fullmatch(entry.name)
-            and entry.stat().st_mtime < cutoff
-        )
-        for entry in expired:
-            shutil.rmtree(entry, ignore_errors=True)
-        return [entry.name for entry in expired]
+        removed: list[str] = []
+        for entry in sorted(self._root.iterdir()):
+            if not _SCAN_ID_PATTERN.fullmatch(entry.name):
+                continue
+            try:
+                status = entry.lstat()
+            except FileNotFoundError:
+                continue
+            if stat.S_ISDIR(status.st_mode) and status.st_mtime < cutoff:
+                shutil.rmtree(entry, ignore_errors=True)
+                removed.append(entry.name)
+        return removed

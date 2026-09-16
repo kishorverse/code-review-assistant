@@ -1,6 +1,8 @@
 import os
+from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -93,6 +95,42 @@ def test_purge_leaves_unrelated_entries_alone(storage: ScanStorage, tmp_path: Pa
 
     assert storage.purge_expired(RETENTION, NOW) == []
     assert unrelated.exists()
+
+
+def test_purge_skips_workspace_deleted_while_purging(
+    storage: ScanStorage, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    expired_id, vanished_id = new_scan_id(), new_scan_id()
+    expired = storage.create(expired_id).root
+    age_workspace(expired, timedelta(days=2))
+    vanished = storage.workspace(vanished_id).root
+    root = expired.parent
+    original_iterdir, original_is_dir = Path.iterdir, Path.is_dir
+
+    # The vanished workspace is listed and still looks like a directory, but is gone
+    # by the time its timestamps are read, as when delete() runs concurrently.
+    def iterdir(self: Path) -> Iterator[Path]:
+        entries = original_iterdir(self)
+        return iter([vanished, *entries]) if self == root else entries
+
+    def is_dir(self: Path, *args: Any, **kwargs: Any) -> bool:
+        return self == vanished or original_is_dir(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "iterdir", iterdir)
+    monkeypatch.setattr(Path, "is_dir", is_dir)
+
+    assert storage.purge_expired(RETENTION, NOW) == [expired_id]
+    assert not expired.exists()
+
+
+def test_purge_leaves_files_named_like_scan_ids_alone(storage: ScanStorage, tmp_path: Path) -> None:
+    stray = tmp_path / "storage" / new_scan_id()
+    stray.parent.mkdir(parents=True)
+    stray.write_text("not a workspace")
+    age_workspace(stray, timedelta(days=30))
+
+    assert storage.purge_expired(RETENTION, NOW) == []
+    assert stray.exists()
 
 
 def test_purge_handles_missing_storage_root(storage: ScanStorage) -> None:
