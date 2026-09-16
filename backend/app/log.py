@@ -5,18 +5,21 @@ per line so logs can be filtered by ``scan_id``, ``stage`` or ``tool``.
 """
 
 import logging
+from typing import TextIO
 
 import structlog
 
 from app.config import LogFormat, LogLevel
 
 
-def configure_logging(level: LogLevel, log_format: LogFormat) -> None:
+def configure_logging(level: LogLevel, log_format: LogFormat, stream: TextIO | None = None) -> None:
     """Configure structlog for the whole process.
 
     Args:
         level: Minimum level that is emitted.
         log_format: ``"json"`` for machine-readable output, ``"console"`` for humans.
+        stream: Where log lines go; standard output by default. The CLI passes
+            standard error so logs never mix with its results.
     """
     renderer: structlog.types.Processor = (
         structlog.processors.JSONRenderer()
@@ -31,6 +34,7 @@ def configure_logging(level: LogLevel, log_format: LogFormat) -> None:
             renderer,
         ],
         wrapper_class=structlog.make_filtering_bound_logger(logging.getLevelNamesMapping()[level]),
+        logger_factory=structlog.PrintLoggerFactory(file=stream),
         # Module-level loggers are created at import time; caching would pin them
         # to whatever configuration existed then.
         cache_logger_on_first_use=False,
