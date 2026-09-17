@@ -81,3 +81,12 @@ def test_rejects_unreadable_and_malformed_files(tmp_path: Path) -> None:
         load_providers_config(broken)
     with pytest.raises(ConfigError, match="is invalid"):
         load_providers_config(write(tmp_path, ["not", "a", "mapping"]))
+
+
+def test_rejects_a_file_saved_in_a_legacy_encoding(tmp_path: Path) -> None:
+    legacy = tmp_path / "providers.yaml"
+    # "café" saved as Windows-1252, where "é" is the single byte 0xE9.
+    legacy.write_bytes(b"# caf" + bytes([0xE9]) + b"\nlimits: {}\n")
+
+    with pytest.raises(ConfigError, match="not UTF-8"):
+        load_providers_config(legacy)

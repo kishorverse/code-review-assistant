@@ -117,6 +117,8 @@ def load_providers_config(path: Path) -> ProvidersConfig:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     except OSError as error:
         raise ConfigError(f"cannot read {path}: {error.strerror}") from error
+    except UnicodeDecodeError as error:
+        raise ConfigError(f"{path} is not UTF-8 text") from error
     except yaml.YAMLError as error:
         raise ConfigError(f"{path} is not valid YAML: {error}") from error
     try:
