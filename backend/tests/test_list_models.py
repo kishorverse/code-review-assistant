@@ -110,6 +110,20 @@ async def test_collect_reports_network_errors(
     assert results[3] == ProviderModels("local", [], "request failed: HTTP 503")
 
 
+async def test_empty_model_list_and_trailing_slash_are_handled(
+    respx_mock: respx.MockRouter, settings: Settings
+) -> None:
+    settings.local_base_url = f"{LOCAL_URL}/"
+    respx_mock.get(f"{LOCAL_URL}/models").mock(
+        return_value=httpx.Response(200, json={"object": "list", "data": None})
+    )
+
+    async with httpx.AsyncClient() as client:
+        results = await collect_models(settings, client)
+
+    assert results[3] == ProviderModels("local", [])
+
+
 async def test_local_server_models_are_listed_without_a_key(
     respx_mock: respx.MockRouter, settings: Settings
 ) -> None:

@@ -47,14 +47,14 @@ class ProviderModels:
 async def fetch_gemini_models(client: httpx.AsyncClient, base_url: str, api_key: str) -> list[str]:
     """Return Gemini models that support text generation, without the ``models/`` prefix."""
     response = await client.get(
-        f"{base_url}/models",
+        f"{base_url.rstrip('/')}/models",
         headers={"x-goog-api-key": api_key},
         params={"pageSize": 1000},
     )
     response.raise_for_status()
     return sorted(
         model["name"].removeprefix("models/")
-        for model in response.json().get("models", [])
+        for model in response.json().get("models") or []
         if "generateContent" in model.get("supportedGenerationMethods", [])
     )
 
@@ -67,9 +67,10 @@ async def fetch_openai_compatible_models(
     Local servers need no token, so an empty token sends no ``Authorization`` header.
     """
     headers = {"Authorization": f"Bearer {token}"} if token else {}
-    response = await client.get(f"{base_url}/models", headers=headers)
+    response = await client.get(f"{base_url.rstrip('/')}/models", headers=headers)
     response.raise_for_status()
-    return sorted(model["id"] for model in response.json().get("data", []))
+    # A local server with no models pulled may answer "data": null.
+    return sorted(model["id"] for model in response.json().get("data") or [])
 
 
 def provider_sources(settings: Settings) -> list[ProviderSource]:
