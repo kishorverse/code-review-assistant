@@ -1,3 +1,4 @@
+import asyncio
 import textwrap
 from collections.abc import Callable
 from pathlib import Path
@@ -6,6 +7,13 @@ import pytest
 
 from app.findings import Category, Finding, Severity
 from app.languages.registry import default_registry
+from app.llm.breaker import CircuitBreaker
+from app.llm.cache import ResponseCache
+from app.llm.clock import SystemClock
+from app.llm.limits import RateLimiter, RateLimits
+from app.llm.models import Priority, Task
+from app.llm.providers.mock import MockProvider
+from app.llm.router import RoutedProvider, Router
 from app.preprocess.models import ChunkingConfig, PreprocessedFile
 from app.preprocess.source_file import preprocess_file
 from app.review.answers import ReportedIssue
@@ -70,3 +78,24 @@ DB_MODULE = """
         query = "SELECT * FROM users WHERE name = '" + name + "'"
         return db.execute(query).fetchall()
 """
+
+
+def mock_router(*providers: MockProvider) -> Router:
+    """A router over in-process providers, tried in the order given, with no rate limits."""
+    clock = SystemClock()
+    return Router(
+        [
+            RoutedProvider(
+                provider=provider,
+                limiter=RateLimiter(RateLimits(), clock),
+                breaker=CircuitBreaker(clock),
+                semaphore=asyncio.Semaphore(4),
+                timeout_seconds=5,
+            )
+            for provider in providers
+        ],
+        dict.fromkeys(Task, tuple(provider.name for provider in providers)),
+        clock=clock,
+        cache=ResponseCache(0),
+        max_wait_seconds=dict.fromkeys(Priority, 0.0),
+    )
