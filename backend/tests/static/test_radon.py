@@ -1,9 +1,13 @@
+import asyncio
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from app.errors import AnalyzerError
 from app.findings import Category, Severity
+from app.static.analyzers import radon
 from app.static.analyzers.radon import (
     RadonAnalyzer,
     complexity_findings,
@@ -11,6 +15,8 @@ from app.static.analyzers.radon import (
     load_report,
     maintainability_findings,
 )
+from app.static.base import AnalysisTarget
+from app.static.process import ProcessResult
 from tests.static.conftest import TargetFactory
 
 
@@ -139,3 +145,29 @@ def test_file_metrics_skip_errors_and_join_maintainability(tmp_path: Path) -> No
 def test_invalid_reports_are_analyzer_errors(stdout: str) -> None:
     with pytest.raises(AnalyzerError):
         load_report(stdout)
+
+
+async def test_a_failing_report_cancels_the_other_radon_reports(
+    make_target: TargetFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cancelled: list[str] = []
+
+    async def fake_run_tool(target: AnalysisTarget, argv: Sequence[str], **_: Any) -> ProcessResult:
+        report = argv[argv.index("radon") + 1]
+        if report == "cc":
+            await asyncio.sleep(0.05)
+            raise AnalyzerError("exited with code 1: radon cc crashed")
+        try:
+            await asyncio.sleep(10)
+        except asyncio.CancelledError:
+            cancelled.append(report)
+            raise
+        return ProcessResult(returncode=0, stdout="{}", stderr="", duration_ms=0)
+
+    monkeypatch.setattr(radon, "run_tool", fake_run_tool)
+    target = make_target({"app.py": "x = 1\n"})
+
+    with pytest.raises(AnalyzerError, match="radon cc crashed"):
+        await asyncio.wait_for(radon.RadonAnalyzer().analyze(target), timeout=5)
+
+    assert sorted(cancelled) == ["mi", "raw"]

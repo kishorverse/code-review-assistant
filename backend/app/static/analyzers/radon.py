@@ -37,16 +37,25 @@ class RadonAnalyzer:
         return bool(target.files_with_suffix(".py"))
 
     async def analyze(self, target: AnalysisTarget) -> AnalyzerResult:
-        """Run the complexity, maintainability and raw-metrics reports concurrently."""
+        """Run the complexity, maintainability and raw-metrics reports concurrently.
+
+        A task group cancels the remaining reports as soon as one fails, and
+        cancellation kills their processes instead of leaving them running.
+        """
         root = str(target.root)
-        complexity, maintainability, raw = await asyncio.gather(
-            run_tool(target, python_tool("radon", "cc", "--json", root)),
-            run_tool(target, python_tool("radon", "mi", "--json", root)),
-            run_tool(target, python_tool("radon", "raw", "--json", root)),
-        )
-        cc_report = load_report(complexity.stdout)
-        mi_report = load_report(maintainability.stdout)
-        raw_report = load_report(raw.stdout)
+        try:
+            async with asyncio.TaskGroup() as group:
+                complexity, maintainability, raw = (
+                    group.create_task(
+                        run_tool(target, python_tool("radon", report, "--json", root))
+                    )
+                    for report in ("cc", "mi", "raw")
+                )
+        except ExceptionGroup as failures:
+            raise failures.exceptions[0] from None
+        cc_report = load_report(complexity.result().stdout)
+        mi_report = load_report(maintainability.result().stdout)
+        raw_report = load_report(raw.result().stdout)
         return AnalyzerResult(
             findings=[
                 *complexity_findings(cc_report, target.root),
