@@ -45,10 +45,10 @@ For each candidate in order:
 
 1. **Breaker open?** If a recent failure paused the provider, it is skipped.
 2. **Rate limits.** The router computes how long the request would have to wait for capacity. If that is longer than `interactive_max_wait_seconds` (5 s) or `batch_max_wait_seconds` (30 s), it moves on to the next provider instead of waiting.
-3. **Recovery probe.** A provider whose pause just ended gets a single probe request. Others skip it until the probe reports back.
-4. **Reserve and wait.** The estimated tokens (prompt size plus the output budget) and one request are reserved, then the router sleeps if needed.
-5. **Re-check.** After acquiring the provider's concurrency slot, the router checks the breaker again. A request that waited is dropped if another call failed meanwhile, instead of piling onto a provider that is already refusing traffic.
-6. **Call** with the provider's timeout. On success, reserved tokens that the response did not use are returned to the budget.
+3. **Reserve and wait.** One request and the estimated tokens (prompt size plus the output budget) are reserved, then the router sleeps if needed.
+4. **Concurrency slot.** Batch requests queue for one of the provider's `max_concurrency` slots. Interactive requests give up once their wait budget is spent and try the next provider.
+5. **Admission.** Only now is the breaker asked whether to call, because the provider may have been paused while the request waited. A paused provider is skipped instead of being piled onto. A provider whose pause just ended receives a single recovery probe; other requests skip it until the probe reports back or the provider's timeout passes. A request dropped here gives its reservation back.
+6. **Call** with the provider's timeout. The reservation is then settled against the usage the provider reports: unused tokens are returned, and usage beyond the estimate is charged.
 
 Every attempt produces a `CallRecord`: provider, model, status, latency, token counts and a short reason. Records never contain prompts or responses. If no provider succeeds, the router raises `AllProvidersUnavailableError` carrying every record, and the pipeline continues with static findings only.
 
@@ -60,11 +60,16 @@ Every attempt produces a `CallRecord`: provider, model, status, latency, token c
 | HTTP 429 without a delay | `rate_limited` | Exponential: 2 s, 4 s, 8 s … capped at 60 s |
 | Gemini daily quota (a `QuotaFailure` naming a per-day quota) | `quota_exhausted` | Until midnight Pacific time, when the quota resets |
 | HTTP 402 (Hugging Face credits used up) | `quota_exhausted` | 1 hour, then a probe |
-| HTTP 401 / 403 | `auth_failed` | 1 hour; a rejected key will not start working by itself |
-| Timeout, connection error, HTTP 408 / 5xx | `unavailable` | 30 s after 3 consecutive failures |
-| Other 4xx, or a malformed or empty response | `rejected` | 30 s after 3 consecutive failures |
+| HTTP 401 / 403, or Gemini's HTTP 400 `API_KEY_INVALID` | `auth_failed` | 1 hour; a rejected key will not start working by itself |
+| HTTP 404, an invalid base URL, or a key that cannot be sent | `misconfigured` | 1 hour; fix the model id or `*_BASE_URL` |
+| Timeout, connection error, HTTP 408 / 5xx, or a response that is not the API's JSON | `unavailable` | 30 s after 3 failures without a success in between |
+| Any other 4xx, a blocked prompt, an empty answer, or an answer cut off at the output token limit | `rejected` | None: the problem is this request, so the next provider is tried and the provider keeps serving other requests |
 
-Tokens reserved for a request the provider refused outright (429, 402, 401/403) are returned to the budget.
+A truncated answer is never returned or cached, even if some text came back.
+
+Tokens reserved for a request the provider refused without processing it (429, 402, 401/403, 404) are returned to the budget.
+
+Calls run concurrently, so outcomes can arrive out of order. A pause is never shortened by a later, shorter one (a 5 s rate limit does not end a daily-quota pause), and a success from a call that started before a pause does not end it.
 
 ## Rate limits
 
