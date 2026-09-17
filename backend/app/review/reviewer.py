@@ -2,8 +2,13 @@
 
 The answer is validated as it arrives: if a provider's answer has no usable
 structure, the router rejects it and asks the next provider. Reported issues
-outside the task's categories or not anchored in the code are dropped;
-judgements are kept only for static findings the model was actually shown.
+outside the task's categories, more severe than the task allows, or not
+anchored in the code are dropped; judgements are kept only for static findings
+the model was actually shown.
+
+A style review may report at most medium severity. Live runs showed small
+style models relabelling injection flaws as critical "maintainability" issues;
+serious problems belong to the bug and security review, which covers them.
 """
 
 from dataclasses import dataclass
@@ -11,7 +16,7 @@ from dataclasses import dataclass
 import structlog
 
 from app.errors import AllProvidersUnavailableError, AnswerFormatError, InvalidResponseError
-from app.findings import Category, Finding
+from app.findings import Category, Finding, Severity
 from app.llm.models import LLMRequest, LLMResponse, Task
 from app.llm.prompts import PromptLibrary
 from app.llm.router import OnCall, Router
@@ -19,8 +24,9 @@ from app.review.answers import ReportedIssue, StaticJudgement, parse_review_answ
 from app.review.context import ReviewContext
 from app.review.grounding import clean_evidence, ungrounded_reason
 
-REVIEW_OUTPUT_TOKENS = 4096
-STYLE_OUTPUT_TOKENS = 2048
+# Generous because reasoning models spend output tokens thinking; unused tokens are refunded.
+REVIEW_OUTPUT_TOKENS = 8192
+STYLE_OUTPUT_TOKENS = 4096
 
 TEMPLATES = {Task.REVIEW: "task_review", Task.STYLE: "task_style"}
 OUTPUT_TOKENS = {Task.REVIEW: REVIEW_OUTPUT_TOKENS, Task.STYLE: STYLE_OUTPUT_TOKENS}
@@ -36,6 +42,7 @@ CATEGORIES = {
     ),
     Task.STYLE: frozenset({Category.STYLE, Category.MAINTAINABILITY}),
 }
+MAX_SEVERITY = {Task.REVIEW: Severity.CRITICAL, Task.STYLE: Severity.MEDIUM}
 
 log = structlog.get_logger(__name__)
 
@@ -95,11 +102,7 @@ async def review_chunk(
     findings: list[Finding] = []
     discarded = answer.discarded
     for issue in answer.issues:
-        reason = (
-            "is outside the task's categories"
-            if issue.category not in CATEGORIES[task]
-            else ungrounded_reason(issue, chunk, context.source)
-        )
+        reason = off_task_reason(issue, task) or ungrounded_reason(issue, chunk, context.source)
         if reason is None:
             findings.append(to_finding(issue, chunk.file_path, response.provider))
         else:
@@ -121,6 +124,15 @@ async def review_chunk(
         discarded=discarded,
     )
     return ChunkReview(task, chunk.file_path, findings, judgements, discarded)
+
+
+def off_task_reason(issue: ReportedIssue, task: Task) -> str | None:
+    """Why a reported issue does not belong to the task, or ``None`` if it does."""
+    if issue.category not in CATEGORIES[task]:
+        return "is outside the task's categories"
+    if issue.severity.rank > MAX_SEVERITY[task].rank:
+        return "is more severe than the task may report"
+    return None
 
 
 def to_finding(issue: ReportedIssue, file_path: str, provider: str) -> Finding:

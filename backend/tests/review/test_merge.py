@@ -12,7 +12,7 @@ from app.review.merge import (
 from app.review.reviewer import Judged
 from tests.review.conftest import make_finding
 
-SQL = make_finding(severity=Severity.MEDIUM)
+SQL = make_finding(severity=Severity.MEDIUM, confidence=0.4)
 SHELL = make_finding(start_line=20, severity=Severity.HIGH, rule_id="B602", title="Shell injection")
 
 
@@ -30,6 +30,7 @@ def test_confirmation_adds_the_model_as_a_source_and_keeps_order() -> None:
 
     assert updated[0].sources == ["bandit", "nvidia"]
     assert updated[0].rationale == "Because."
+    assert updated[0].confidence == 0.8
     assert updated[0].status is FindingStatus.OPEN
     assert updated[1] is other
 
@@ -139,7 +140,8 @@ def test_a_dismissed_finding_another_model_reports_needs_review() -> None:
         ({}, True),
         ({"status": FindingStatus.NEEDS_REVIEW}, True),
         ({"status": FindingStatus.DISMISSED_BY_AI}, False),
-        ({"confidence": 0.59}, False),
+        ({"confidence": 0.59, "sources": ["nvidia"]}, False),
+        ({"confidence": 0.59, "sources": ["bandit"]}, True),
     ],
 )
 def test_is_reported(overrides: dict[str, object], reported: bool) -> None:

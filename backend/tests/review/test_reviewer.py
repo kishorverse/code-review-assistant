@@ -9,7 +9,7 @@ from app.llm.providers.mock import MockProvider
 from app.redaction import SecretIndex
 from app.review.answers import JudgementVerdict
 from app.review.context import ReviewContext, build_context, for_review, load_source
-from app.review.reviewer import review_chunk
+from app.review.reviewer import REVIEW_OUTPUT_TOKENS, STYLE_OUTPUT_TOKENS, review_chunk
 from tests.review.conftest import DB_MODULE, ProjectFactory, make_finding, mock_router
 
 INJECTION_ISSUE = {
@@ -78,7 +78,7 @@ async def test_turns_grounded_issues_into_findings_and_resolves_judgements(
     assert review.failure is None
     [request] = seen
     assert request.allow_external
-    assert request.max_output_tokens == 4096
+    assert request.max_output_tokens == REVIEW_OUTPUT_TOKENS
     assert "1 | import sqlite3" in request.user
     assert "Rules:" in request.system
 
@@ -138,10 +138,12 @@ async def test_reports_a_failure_when_no_provider_can_review(context: ReviewCont
 async def test_style_reviews_use_the_style_prompt_and_categories(context: ReviewContext) -> None:
     seen: list[LLMRequest] = []
     naming = INJECTION_ISSUE | {"category": "style", "severity": "low", "title": "Vague name"}
+    # A style model relabelling a security flaw as a critical maintainability issue.
+    relabelled = INJECTION_ISSUE | {"category": "maintainability", "severity": "critical"}
 
     def respond(request: LLMRequest) -> str:
         seen.append(request)
-        return answer([naming, INJECTION_ISSUE])
+        return answer([naming, INJECTION_ISSUE, relabelled])
 
     router = mock_router(MockProvider(respond=respond))
 
@@ -150,6 +152,6 @@ async def test_style_reviews_use_the_style_prompt_and_categories(context: Review
     )
 
     assert [finding.title for finding in review.findings] == ["Vague name"]
-    assert review.discarded == 1
+    assert review.discarded == 2
     assert "PEP 8 and PEP 257" in seen[0].user
-    assert seen[0].max_output_tokens == 2048
+    assert seen[0].max_output_tokens == STYLE_OUTPUT_TOKENS

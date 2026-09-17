@@ -13,7 +13,7 @@ FINDINGS = [
         file_path="app/api.py", start_line=9, severity=Severity.CRITICAL, category=Category.BUG
     ),
     make_finding(start_line=30, status=FindingStatus.DISMISSED_BY_AI),
-    make_finding(start_line=31, confidence=0.3),
+    make_finding(start_line=31, confidence=0.3, sources=["hf-small"]),
 ]
 
 

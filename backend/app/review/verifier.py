@@ -18,7 +18,7 @@ from app.review.answers import VerificationAnswer, VerificationVerdict, parse_ve
 from app.review.context import SourceText
 from app.review.merge import is_ai_only
 
-VERIFY_OUTPUT_TOKENS = 1024
+VERIFY_OUTPUT_TOKENS = 2048
 CONTEXT_LINES = 10
 NOT_VERIFIED_NOTE = "Not cross-checked: no other model was available."
 

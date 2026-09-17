@@ -3,7 +3,8 @@
 Rules, in order of precedence:
 
 - A confirmation outweighs a dismissal: if any model confirms a static finding,
-  it stays open and the model is added to its sources.
+  it stays open, the model is added to its sources, and its confidence rises to
+  at least 0.8, since two independent sources now agree.
 - A dismissed finding is kept, labelled "dismissed by AI" with the model's
   reason.
 - A high or critical security finding is protected: a model alone can neither
@@ -23,6 +24,7 @@ from app.review.answers import JudgementVerdict
 from app.review.reviewer import Judged
 
 REPORTED_STATUSES = frozenset({FindingStatus.OPEN, FindingStatus.NEEDS_REVIEW})
+CONFIRMED_CONFIDENCE = 0.8
 
 
 def is_ai_only(finding: Finding) -> bool:
@@ -30,9 +32,19 @@ def is_ai_only(finding: Finding) -> bool:
     return all(source in PROVIDER_NAMES for source in finding.sources)
 
 
+def is_unconfident(finding: Finding, min_confidence: float) -> bool:
+    """Whether an AI-only finding falls below the confidence threshold.
+
+    The threshold never hides deterministic findings: a tool's own confidence rating
+    (Bandit rates some real injections as low confidence) is not a reason to hide them.
+    """
+    return is_ai_only(finding) and finding.confidence < min_confidence
+
+
 def is_reported(finding: Finding, min_confidence: float) -> bool:
-    """Whether a finding belongs in the default report: open or needing review, and confident."""
-    return finding.status in REPORTED_STATUSES and finding.confidence >= min_confidence
+    """Whether a finding belongs in the default report: open or needing review, and not an
+    AI-only finding below the confidence threshold."""
+    return finding.status in REPORTED_STATUSES and not is_unconfident(finding, min_confidence)
 
 
 def apply_judgements(findings: Sequence[Finding], judged: Iterable[Judged]) -> list[Finding]:
@@ -86,6 +98,7 @@ def _confirm(finding: Finding, confirmed: Sequence[Judged]) -> Finding:
     update: dict[str, object] = {
         "sources": _union(finding.sources, [entry.provider for entry in confirmed]),
         "rationale": finding.rationale or first.judgement.reason or None,
+        "confidence": max(finding.confidence, CONFIRMED_CONFIDENCE),
     }
     adjusted = first.judgement.adjusted_severity
     if adjusted is None or adjusted is finding.severity:

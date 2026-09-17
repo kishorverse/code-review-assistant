@@ -54,7 +54,7 @@ class ReviewOptions:
         allow_external: Whether code may be sent to hosted providers. Without it
             only a local model is used.
         max_review_calls: Most review and style calls in one scan.
-        min_confidence: Findings below this are kept but not reported by default.
+        min_confidence: AI-only findings below this are kept but not reported by default.
         concurrency: Most model calls in flight at once for this scan.
     """
 

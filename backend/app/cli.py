@@ -41,7 +41,7 @@ from app.pipeline import (
     run_scan,
     upload_ingest,
 )
-from app.review.merge import is_reported
+from app.review.merge import is_reported, is_unconfident
 from app.review.planner import DEFAULT_MIN_CONFIDENCE, Depth, ReviewOptions
 from app.review.session import ReviewResult
 from app.static.base import Analyzer, ToolStatus
@@ -112,7 +112,7 @@ def scan(
     ] = False,
     min_confidence: Annotated[
         float,
-        typer.Option(min=0.0, max=1.0, help="Leave out findings below this confidence."),
+        typer.Option(min=0.0, max=1.0, help="Leave out AI findings below this confidence."),
     ] = DEFAULT_MIN_CONFIDENCE,
 ) -> None:
     """Scan a project with the static analyzers, and optionally LLM review, then print findings."""
@@ -272,7 +272,7 @@ def _review_report(result: ScanResult, min_confidence: float) -> dict[str, Any] 
 def _not_reported(findings: list[Finding], min_confidence: float) -> dict[str, int]:
     dismissed = sum(f.status is FindingStatus.DISMISSED_BY_AI for f in findings)
     unconfident = sum(
-        f.status is not FindingStatus.DISMISSED_BY_AI and f.confidence < min_confidence
+        f.status is not FindingStatus.DISMISSED_BY_AI and is_unconfident(f, min_confidence)
         for f in findings
     )
     return {"dismissed_by_ai": dismissed, "below_min_confidence": unconfident}

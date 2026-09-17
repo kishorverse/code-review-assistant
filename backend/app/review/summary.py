@@ -18,7 +18,7 @@ from app.review.answers import ReviewSummary, parse_summary_answer
 from app.review.context import describe_project
 from app.review.merge import is_reported
 
-SUMMARY_OUTPUT_TOKENS = 1024
+SUMMARY_OUTPUT_TOKENS = 2048
 MAX_LISTED_FINDINGS = 30
 
 
