@@ -6,6 +6,7 @@ import pytest
 
 from app.errors import (
     AllProvidersUnavailableError,
+    InvalidResponseError,
     ProviderAuthError,
     ProviderConfigError,
     ProviderRequestError,
@@ -563,3 +564,51 @@ async def test_status_lists_enabled_providers(clock: FakeClock) -> None:
     assert (gemini.name, gemini.model, gemini.external) == ("gemini", "flash", True)
     assert (local.name, local.model, local.external) == ("local", "qwen", False)
     assert local.breaker.state is BreakerState.CLOSED
+
+
+def json_only(response: LLMResponse) -> None:
+    if not response.text.startswith("{"):
+        raise InvalidResponseError(response.provider, "answer was not JSON")
+
+
+class TextProvider(ScriptedProvider):
+    """Answers with fixed text."""
+
+    def __init__(self, name: str, text: str) -> None:
+        super().__init__(name)
+        self._text = text
+
+    async def complete(self, request: LLMRequest) -> LLMResponse:
+        response = await super().complete(request)
+        return response.model_copy(update={"text": self._text})
+
+
+async def test_unusable_answers_fall_back_and_are_not_cached(clock: FakeClock) -> None:
+    rambling = TextProvider("nvidia", "Sure! Here are the findings: ...")
+    precise = TextProvider("gemini", '{"findings": []}')
+    router = make_router(clock, routed(rambling, clock), routed(precise, clock), cache_entries=8)
+    records: list[CallRecord] = []
+
+    first = await router.complete(request(), on_call=records.append, validate=json_only)
+    again = await router.complete(request(), on_call=records.append, validate=json_only)
+
+    assert (first.provider, again.provider, again.cached) == ("gemini", "gemini", True)
+    assert statuses(records) == [
+        ("nvidia", CallStatus.REJECTED),
+        ("gemini", CallStatus.OK),
+        ("gemini", CallStatus.CACHED),
+    ]
+    assert records[0].detail == "nvidia: answer was not JSON"
+    assert rambling.calls == 1
+    assert router.status()[0].breaker.state is BreakerState.CLOSED
+
+
+async def test_a_cached_answer_that_fails_validation_is_not_served(clock: FakeClock) -> None:
+    plain = TextProvider("nvidia", "plain text")
+    router = make_router(clock, routed(plain, clock), cache_entries=8)
+    await router.complete(request())
+
+    with pytest.raises(AllProvidersUnavailableError):
+        await router.complete(request(), validate=json_only)
+
+    assert plain.calls == 2

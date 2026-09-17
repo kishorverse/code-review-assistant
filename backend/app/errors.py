@@ -112,6 +112,10 @@ class ProviderRequestError(ProviderError):
     """
 
 
+class InvalidResponseError(ProviderRequestError):
+    """The provider answered, but not in a form the caller can use, such as malformed JSON."""
+
+
 class AllProvidersUnavailableError(MarginError):
     """No provider could complete a request; the caller falls back to static results only.
 
