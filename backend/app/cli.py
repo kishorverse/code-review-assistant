@@ -6,9 +6,11 @@ Examples::
     margin scan project.zip --format json --output report.json
     margin scan src --fail-on high
     margin scan src --depth standard --allow-external
+    margin scan src --format sarif --output margin.sarif
 """
 
 import asyncio
+import json
 import sys
 import tempfile
 from collections import Counter
@@ -41,6 +43,8 @@ from app.pipeline import (
     upload_ingest,
 )
 from app.report.document import Report, ReviewSection, build_report
+from app.report.html import render_html
+from app.report.sarif import to_sarif
 from app.review.planner import DEFAULT_MIN_CONFIDENCE, Depth, ReviewOptions
 from app.static.base import Analyzer, ToolStatus
 from app.static.runner import default_analyzers
@@ -62,6 +66,8 @@ class OutputFormat(StrEnum):
 
     TABLE = "table"
     JSON = "json"
+    SARIF = "sarif"
+    HTML = "html"
 
 
 class FailOn(StrEnum):
@@ -232,6 +238,12 @@ _QUIET_CALLS = frozenset({CallStatus.OK, CallStatus.CACHED})
 def _render(report: Report, output_format: OutputFormat, console: Console) -> None:
     if output_format is OutputFormat.JSON:
         _write_raw(console.file, report.model_dump_json(indent=2) + "\n")
+        return
+    if output_format is OutputFormat.SARIF:
+        _write_raw(console.file, json.dumps(to_sarif(report), indent=2) + "\n")
+        return
+    if output_format is OutputFormat.HTML:
+        _write_raw(console.file, render_html(report))
         return
     reported = report.reported_findings()
     table = Table(title=f"Margin {__version__}: {len(reported)} findings")

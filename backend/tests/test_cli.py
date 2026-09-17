@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 import respx
+from jsonschema import Draft4Validator
 from typer.testing import CliRunner
 
 from app.cli import EXIT_CONFIG_ERROR, EXIT_FINDINGS_AT_THRESHOLD, EXIT_REJECTED, app
@@ -154,3 +155,20 @@ def test_review_with_only_hosted_providers_needs_consent_and_sends_nothing(
     assert "Pass --allow-external" in result.stderr
     assert not respx_mock.calls
     assert json.loads(result.stdout)["review"]["calls"] == []
+
+
+def test_exports_sarif_and_html_reports(project: Path, tmp_path: Path) -> None:
+    sarif_path, html_path = tmp_path / "margin.sarif", tmp_path / "report.html"
+
+    sarif = runner.invoke(app, ["scan", str(project), "-f", "sarif", "-o", str(sarif_path), "-q"])
+    html = runner.invoke(app, ["scan", str(project), "-f", "html", "-o", str(html_path), "-q"])
+
+    assert (sarif.exit_code, html.exit_code) == (0, 0), sarif.output + html.output
+    log = json.loads(sarif_path.read_text(encoding="utf-8"))
+    schema_path = Path(__file__).parent / "report" / "fixtures" / "sarif-schema-2.1.0.json"
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    assert list(Draft4Validator(schema).iter_errors(log)) == []
+    assert "B602" in {result["ruleId"] for result in log["runs"][0]["results"]}
+    page = html_path.read_text(encoding="utf-8")
+    assert page.startswith("<!doctype html>")
+    assert "<title>Margin review: project</title>" in page
