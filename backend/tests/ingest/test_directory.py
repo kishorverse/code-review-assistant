@@ -1,11 +1,13 @@
 import os
+import threading
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from app.errors import IngestError, IngestRejection
 from app.ingest.directory import ingest_directory
-from app.ingest.models import IngestLimits, SkippedFile, SkipReason
+from app.ingest.models import IngestLimits, IngestResult, SkippedFile, SkipReason
 
 
 def write(root: Path, name: str, content: bytes | str) -> Path:
@@ -67,6 +69,43 @@ def test_never_follows_symbolic_links(project: Path, tmp_path: Path) -> None:
     assert SkippedFile(path="linked_dir", reason=SkipReason.SYMLINK) in result.skipped
     assert SkippedFile(path="linked.py", reason=SkipReason.SYMLINK) in result.skipped
     assert not any("secret" in name for name in result.files)
+
+
+def test_unreadable_files_are_skipped_instead_of_failing_the_scan(
+    project: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    locked = project / "app" / "main.py"
+    original_open = Path.open
+
+    def deny_locked(self: Path, *args: Any, **kwargs: Any) -> Any:
+        if self == locked:
+            raise PermissionError(13, "Permission denied", str(self))
+        return original_open(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", deny_locked)
+
+    result = ingest_directory(project, tmp_path / "dest", IngestLimits(max_file_bytes=1024))
+
+    assert SkippedFile(path="app/main.py", reason=SkipReason.UNREADABLE) in result.skipped
+    assert "app/utils/helpers.py" in result.files
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="named pipes are POSIX-only")
+def test_named_pipes_are_skipped_without_blocking(project: Path, tmp_path: Path) -> None:
+    os.mkfifo(project / "app" / "events.pipe")
+    outcome: dict[str, object] = {}
+
+    def scan() -> None:
+        outcome["result"] = ingest_directory(project, tmp_path / "dest", IngestLimits())
+
+    worker = threading.Thread(target=scan, daemon=True)
+    worker.start()
+    worker.join(timeout=10)
+
+    assert not worker.is_alive(), "ingest blocked on a named pipe"
+    result = outcome["result"]
+    assert isinstance(result, IngestResult)
+    assert SkippedFile(path="app/events.pipe", reason=SkipReason.SPECIAL_FILE) in result.skipped
 
 
 def test_enforces_file_count_and_total_size_limits(project: Path, tmp_path: Path) -> None:

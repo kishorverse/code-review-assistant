@@ -7,6 +7,7 @@ through a symbolic link.
 """
 
 import os
+import stat
 from functools import partial
 from pathlib import Path, PurePosixPath
 
@@ -49,15 +50,15 @@ def ingest_directory(source: Path, destination: Path, limits: IngestLimits) -> I
         relative_directory = PurePosixPath(*current.relative_to(root).parts)
         subdirectories[:] = _descend_into(current, relative_directory, subdirectories, skipped)
         for name in sorted(names):
-            relative = relative_directory / name
-            size = (current / name).lstat().st_size
-            reason = _skip_reason(current / name, relative, size, limits)
+            path, relative = current / name, relative_directory / name
+            reason, size = _inspect(path, relative, limits)
+            if reason is None:
+                _enforce_limits(len(files) + 1, total_bytes + size, limits)
+                reason = _copy(path, destination.joinpath(*relative.parts), size)
             if reason is not None:
                 skipped.append(SkippedFile(path=relative.as_posix(), reason=reason))
                 continue
             total_bytes += size
-            _enforce_limits(len(files) + 1, total_bytes, limits)
-            _copy(current / name, destination.joinpath(*relative.parts), size)
             files.append(relative.as_posix())
 
     return IngestResult(
@@ -82,21 +83,36 @@ def _descend_into(
     return kept
 
 
-def _skip_reason(
-    path: Path, relative: PurePosixPath, size: int, limits: IngestLimits
-) -> SkipReason | None:
-    if path.is_symlink():
-        return SkipReason.SYMLINK
+def _inspect(
+    path: Path, relative: PurePosixPath, limits: IngestLimits
+) -> tuple[SkipReason | None, int]:
+    """Why a directory entry is skipped, if it is, and its size.
+
+    The entry type comes from one ``lstat`` before anything is opened, so named
+    pipes and devices are never read (reading a pipe would block the scan).
+    Files the user cannot read are skipped rather than failing the scan.
+    """
+    try:
+        status = path.lstat()
+    except OSError:
+        return SkipReason.UNREADABLE, 0
+    if stat.S_ISLNK(status.st_mode):
+        return SkipReason.SYMLINK, 0
+    if not stat.S_ISREG(status.st_mode):
+        return SkipReason.SPECIAL_FILE, 0
     try:
         safe_relative_path(relative.as_posix(), limits.max_path_length)
     except IngestError:
-        return SkipReason.INVALID_NAME
+        return SkipReason.INVALID_NAME, 0
     reason = skip_reason_for_path(relative)
     if reason is not None:
-        return reason
-    with path.open("rb") as handle:
-        head = handle.read(BINARY_SNIFF_BYTES)
-    return skip_reason_for_content(size, head, limits.max_file_bytes)
+        return reason, 0
+    try:
+        with path.open("rb") as handle:
+            head = handle.read(BINARY_SNIFF_BYTES)
+    except OSError:
+        return SkipReason.UNREADABLE, 0
+    return skip_reason_for_content(status.st_size, head, limits.max_file_bytes), status.st_size
 
 
 def _enforce_limits(file_count: int, total_bytes: int, limits: IngestLimits) -> None:
@@ -114,7 +130,16 @@ def _enforce_limits(file_count: int, total_bytes: int, limits: IngestLimits) -> 
         )
 
 
-def _copy(source: Path, target: Path, size: int) -> None:
-    """Copy at most ``size`` bytes, so a file growing during the scan cannot exceed the limits."""
-    with source.open("rb") as handle:
-        write_limited(iter(partial(handle.read, _COPY_CHUNK_BYTES), b""), target, size)
+def _copy(source: Path, target: Path, size: int) -> SkipReason | None:
+    """Copy at most ``size`` bytes, so a file growing during the scan cannot exceed the limits.
+
+    Returns:
+        ``None`` when copied, or ``UNREADABLE`` if the file could not be read.
+    """
+    try:
+        with source.open("rb") as handle:
+            write_limited(iter(partial(handle.read, _COPY_CHUNK_BYTES), b""), target, size)
+    except OSError:
+        target.unlink(missing_ok=True)
+        return SkipReason.UNREADABLE
+    return None

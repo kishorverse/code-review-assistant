@@ -31,6 +31,8 @@ class SkipReason(StrEnum):
     BINARY = "binary"
     SYMLINK = "symlink"
     INVALID_NAME = "invalid_name"
+    SPECIAL_FILE = "special_file"
+    UNREADABLE = "unreadable"
 
 
 class SkippedFile(BaseModel):
