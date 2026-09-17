@@ -52,8 +52,9 @@ The upload is extracted while the request is open, so an unsafe or broken archiv
 | `411` | The request did not declare `Content-Length` |
 | `413` | The upload exceeds 20 MB; refused before the body is read |
 | `422` | A form field is invalid |
+| `503` | Too many scans are pending; retry after the `Retry-After` seconds |
 
-At most `MAX_CONCURRENT_SCANS` scans run at once (2 by default); later scans wait with status `queued`.
+At most `MAX_CONCURRENT_SCANS` scans run at once (2 by default), and later scans wait with status `queued`. At most five times that many may be pending, so a flood of uploads cannot fill the disk.
 
 ## Following progress
 

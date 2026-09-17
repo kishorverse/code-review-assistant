@@ -11,6 +11,7 @@ from app.errors import (
     IngestError,
     ScanNotFinishedError,
     ScanNotFoundError,
+    ScanQueueFullError,
     UnknownFindingError,
 )
 from app.events import ScanStatus, StatusEvent
@@ -22,7 +23,7 @@ from app.llm.router import Router
 from app.review.planner import Depth, ReviewOptions
 from app.scans.manager import INTERRUPTED_MESSAGE, ScanManager, display_name
 from tests.review.conftest import mock_router
-from tests.scans.fakes import SOURCE, FlagEveryFile
+from tests.scans.fakes import SOURCE, FlagEveryFile, wait_for_status
 
 
 def make_manager(
@@ -101,10 +102,8 @@ async def test_scans_beyond_the_limit_wait_in_the_queue(tmp_path: Path) -> None:
 
     first = await submit(manager)
     second = await submit(manager)
-    for _ in range(20):
-        await asyncio.sleep(0.01)
+    await wait_for_status(manager, first, ScanStatus.RUNNING)
 
-    assert (await manager.info(first)).status is ScanStatus.RUNNING
     assert (await manager.info(second)).status is ScanStatus.QUEUED
     gate.set()
     await finish(manager, first)
@@ -148,7 +147,7 @@ async def test_a_scan_running_during_a_restart_is_marked_interrupted(tmp_path: P
     gate = asyncio.Event()
     manager = make_manager(tmp_path, analyzer=FlagEveryFile(gate))
     scan_id = await submit(manager)
-    await asyncio.sleep(0.05)
+    await wait_for_status(manager, scan_id, ScanStatus.RUNNING)
 
     restarted = make_manager(tmp_path)
     info = await restarted.info(scan_id)
@@ -188,7 +187,7 @@ async def test_deleting_a_running_scan_stops_it_and_removes_its_files(tmp_path: 
     gate = asyncio.Event()
     manager = make_manager(tmp_path, analyzer=FlagEveryFile(gate))
     scan_id = await submit(manager)
-    await asyncio.sleep(0.05)
+    await wait_for_status(manager, scan_id, ScanStatus.RUNNING)
 
     await manager.delete(scan_id)
 
@@ -214,3 +213,17 @@ def test_display_names_are_short_printable_base_names() -> None:
     assert display_name("dir/evil" + chr(0x202E) + "name.py" + chr(10)) == "evilname.py"
     assert display_name("") == "upload"
     assert len(display_name("a" * 500 + ".py")) == 120
+
+
+async def test_new_uploads_are_refused_while_too_many_scans_are_pending(tmp_path: Path) -> None:
+    gate = asyncio.Event()
+    manager = make_manager(tmp_path, analyzer=FlagEveryFile(gate), max_concurrent=1)
+    pending = [await submit(manager) for _ in range(5)]
+
+    with pytest.raises(ScanQueueFullError):
+        await manager.new_workspace()
+
+    gate.set()
+    for scan_id in pending:
+        await finish(manager, scan_id)
+    assert (await manager.new_workspace()).root.is_dir()

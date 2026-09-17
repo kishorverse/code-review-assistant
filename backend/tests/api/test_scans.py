@@ -7,12 +7,14 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from jsonschema import Draft4Validator
 
 from app.config import Settings
+from app.events import ScanStatus
 from app.main import create_app
-from tests.scans.fakes import SOURCE, FlagEveryFile
+from tests.scans.fakes import SOURCE, FlagEveryFile, wait_for_status
 
 SARIF_SCHEMA = Path(__file__).parents[1] / "report" / "fixtures" / "sarif-schema-2.1.0.json"
 
@@ -36,12 +38,15 @@ def gate() -> asyncio.Event:
 
 
 @pytest.fixture
-async def api(tmp_path: Path, gate: asyncio.Event) -> AsyncIterator[AsyncClient]:
-    app = make_api(tmp_path, FlagEveryFile(gate))
-    async with (
-        app.router.lifespan_context(app),
-        AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client,
-    ):
+async def app(tmp_path: Path, gate: asyncio.Event) -> AsyncIterator[FastAPI]:
+    application = make_api(tmp_path, FlagEveryFile(gate))
+    async with application.router.lifespan_context(application):
+        yield application
+
+
+@pytest.fixture
+async def api(app: FastAPI) -> AsyncIterator[AsyncClient]:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
 
 
@@ -54,22 +59,26 @@ async def upload(
 
 
 async def read_events(client: AsyncClient, scan_id: str, **headers: str) -> list[dict[str, Any]]:
+    """Read a scan's whole event stream.
+
+    The test transport delivers a response only once it is complete, so this is
+    for scans that finish; tests wait for other states through the scan manager.
+    """
     events: list[dict[str, Any]] = []
     current: dict[str, Any] = {}
     async with client.stream("GET", f"/api/scans/{scan_id}/events", headers=headers) as response:
         assert response.status_code == 200
         assert response.headers["content-type"].startswith("text/event-stream")
         async for line in response.aiter_lines():
-            if not line:
-                if current:
-                    events.append(current)
-                current = {}
-            elif line.startswith("id: "):
+            if line.startswith("id: "):
                 current["id"] = int(line[4:])
             elif line.startswith("event: "):
                 current["event"] = line[7:]
             elif line.startswith("data: "):
                 current["data"] = json.loads(line[6:])
+            elif not line and current:
+                events.append(current)
+                current = {}
     return events
 
 
@@ -199,11 +208,11 @@ async def test_only_the_scans_own_files_are_served(api: AsyncClient) -> None:
 
 
 async def test_results_are_not_available_while_the_scan_runs(
-    api: AsyncClient, gate: asyncio.Event
+    api: AsyncClient, app: FastAPI, gate: asyncio.Event
 ) -> None:
     gate.clear()
     scan_id = (await upload(api)).json()["id"]
-    await asyncio.sleep(0.05)
+    await wait_for_status(app.state.scans, scan_id, ScanStatus.RUNNING)
 
     detail = (await api.get(f"/api/scans/{scan_id}")).json()
     report = await api.get(f"/api/scans/{scan_id}/report")
@@ -235,3 +244,17 @@ async def test_providers_lists_the_enabled_models(api: AsyncClient) -> None:
     assert set(names) == {"gemini", "nvidia", "hf-large", "hf-small", "local"}
     assert names["local"]["external"] is False
     assert names["gemini"]["state"] == "closed"
+
+
+async def test_uploads_are_refused_with_retry_after_when_the_queue_is_full(
+    api: AsyncClient, gate: asyncio.Event
+) -> None:
+    gate.clear()
+    statuses = [(await upload(api)).status_code for _ in range(11)]
+
+    refused = await upload(api)
+
+    assert statuses == [202] * 10 + [503]
+    assert refused.status_code == 503
+    assert refused.headers["retry-after"] == "30"
+    gate.set()

@@ -26,6 +26,7 @@ from app.errors import (
     IngestError,
     ScanNotFinishedError,
     ScanNotFoundError,
+    ScanQueueFullError,
     UnknownFindingError,
     UploadTooLargeError,
 )
@@ -37,6 +38,7 @@ from app.scans.manager import AnalyzerFactory, ScanManager
 from app.static.runner import default_analyzers
 
 PURGE_INTERVAL_SECONDS = 15 * 60
+RETRY_AFTER_SECONDS = 30
 MULTIPART_OVERHEAD_BYTES = 64 * 1024
 """Room for multipart boundaries and form fields around an upload of the maximum size."""
 
@@ -126,6 +128,11 @@ def _add_error_handlers(app: FastAPI) -> None:
     async def too_large(request: Request, error: Exception) -> JSONResponse:
         return detail(413, str(error))
 
+    async def busy(request: Request, error: Exception) -> JSONResponse:
+        response = detail(503, str(error))
+        response.headers["Retry-After"] = str(RETRY_AFTER_SECONDS)
+        return response
+
     async def rejected(request: Request, error: Exception) -> JSONResponse:
         if not isinstance(error, IngestError):
             return detail(400, str(error))
@@ -135,4 +142,5 @@ def _add_error_handlers(app: FastAPI) -> None:
         app.add_exception_handler(error_type, not_found)
     app.add_exception_handler(ScanNotFinishedError, not_finished)
     app.add_exception_handler(UploadTooLargeError, too_large)
+    app.add_exception_handler(ScanQueueFullError, busy)
     app.add_exception_handler(IngestError, rejected)

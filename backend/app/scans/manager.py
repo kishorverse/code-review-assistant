@@ -25,6 +25,7 @@ from app.errors import (
     InvalidScanIdError,
     ScanNotFinishedError,
     ScanNotFoundError,
+    ScanQueueFullError,
 )
 from app.events import ScanStatus, StatusEvent
 from app.findings import Finding, FindingStatus
@@ -45,6 +46,8 @@ MAX_SOURCE_NAME = 120
 FAILED_MESSAGE = "The scan failed unexpectedly."
 INTERRUPTED_MESSAGE = "The scan was interrupted by a server restart."
 UPLOAD_NAME = "upload"
+PENDING_PER_RUNNING = 5
+"""How many scans may be pending (queued or running) for each scan allowed to run at once."""
 
 AnalyzerFactory = Callable[[], list[Analyzer]]
 Clock = Callable[[], datetime]
@@ -101,6 +104,7 @@ class ScanManager:
         self._analyzers = analyzers
         self._retention = retention
         self._semaphore = asyncio.Semaphore(max_concurrent)
+        self._max_pending = max_concurrent * PENDING_PER_RUNNING
         self._settings = scan_settings or ScanSettings()
         self._now = now
         self._scans: dict[str, _Scan] = {}
@@ -112,7 +116,18 @@ class ScanManager:
         return self._settings.limits.max_archive_bytes
 
     async def new_workspace(self) -> ScanWorkspace:
-        """Create an empty workspace to receive an upload into ``upload_path``."""
+        """Create an empty workspace to receive an upload into ``upload_path``.
+
+        Raises:
+            ScanQueueFullError: If too many scans are pending, so an upload flood
+                cannot fill the disk.
+        """
+        pending = sum(
+            scan.info.status in (ScanStatus.QUEUED, ScanStatus.RUNNING)
+            for scan in self._scans.values()
+        )
+        if pending >= self._max_pending:
+            raise ScanQueueFullError("Too many scans are in progress; try again shortly")
         return await asyncio.to_thread(self._storage.create, new_scan_id())
 
     @staticmethod

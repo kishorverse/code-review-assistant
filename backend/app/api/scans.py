@@ -118,7 +118,7 @@ async def create_scan(
     """
     if file.size is not None and file.size > manager.max_upload_bytes:
         raise UploadTooLargeError("The upload is larger than the limit")
-    workspace = await manager.new_workspace()
+    workspace = await manager.new_workspace()  # Refuses when too many scans are pending.
     try:
         with manager.upload_path(workspace).open("wb") as destination:
             await asyncio.to_thread(shutil.copyfileobj, file.file, destination)

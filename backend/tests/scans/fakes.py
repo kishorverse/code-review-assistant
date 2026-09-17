@@ -1,6 +1,8 @@
 import asyncio
 
+from app.events import ScanStatus, StatusEvent
 from app.findings import Category, Finding, Severity
+from app.scans.manager import ScanManager
 from app.static.base import AnalysisTarget, AnalyzerResult
 
 SOURCE = "def average(values):\n    return sum(values) / len(values)\n"
@@ -35,3 +37,13 @@ class FlagEveryFile:
                 for path in target.files
             ]
         )
+
+
+async def wait_for_status(manager: ScanManager, scan_id: str, status: ScanStatus) -> None:
+    """Follow the scan's events until it reports a status, instead of sleeping for a guess."""
+    log = await manager.events(scan_id)
+    async with asyncio.timeout(10):
+        async for stored in log.follow():
+            if isinstance(stored.event, StatusEvent) and stored.event.status is status:
+                return
+    raise AssertionError(f"the scan finished without reaching {status.value}")

@@ -150,6 +150,10 @@ class ScanNotFinishedError(MarginError):
     """The scan has no results yet."""
 
 
+class ScanQueueFullError(MarginError):
+    """Too many scans are waiting or running to accept another one now."""
+
+
 class UploadTooLargeError(MarginError):
     """An upload exceeded the size limit while it was being received."""
 
