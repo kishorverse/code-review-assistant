@@ -30,7 +30,9 @@ def test_new_scan_ids_are_unique_32_character_hex() -> None:
     assert all(len(scan_id) == 32 and int(scan_id, 16) >= 0 for scan_id in ids)
 
 
-def test_create_makes_upload_and_source_directories(storage: ScanStorage, tmp_path: Path) -> None:
+def test_create_makes_upload_source_and_scratch_directories(
+    storage: ScanStorage, tmp_path: Path
+) -> None:
     scan_id = new_scan_id()
 
     workspace = storage.create(scan_id)
@@ -38,6 +40,7 @@ def test_create_makes_upload_and_source_directories(storage: ScanStorage, tmp_pa
     assert workspace.root == tmp_path / "storage" / scan_id
     assert workspace.upload_dir.is_dir()
     assert workspace.source_dir.is_dir()
+    assert workspace.scratch_dir.is_dir()
 
 
 def test_create_refuses_to_reuse_an_existing_workspace(storage: ScanStorage) -> None:

@@ -17,7 +17,7 @@ These rules keep the codebase consistent, reviewable and safe. They apply to eve
 | Language-specific logic | `backend/app/languages/` | Other modules use the `LanguageAdapter` protocol. No `if language == "python"` anywhere else. |
 | LLM access | `backend/app/llm/providers/` | Everything goes through the `LLMProvider` protocol and the router. No provider SDK imports outside `providers/`. |
 | Prompts | `backend/app/llm/prompts/*.md` | Versioned files with a `PROMPT_VERSION` header. No prompt text in Python strings. |
-| Custom analysis rules | `backend/rules/*.yaml` | Opengrep rules, each with `cwe` and `category` metadata. |
+| Custom analysis rules | `backend/app/static/rules/*.yaml` | Opengrep rules, each with `cwe`, `category` and `confidence` metadata. |
 | Configuration | `backend/app/config.py` | `pydantic-settings`, loaded from the environment / `.env`. No `os.environ` access elsewhere. |
 | Data crossing a boundary | Pydantic models | API bodies, LLM requests and responses, analyzer output, scan events. |
 

@@ -29,6 +29,10 @@ class SkipReason(StrEnum):
     MINIFIED = "minified"
     TOO_LARGE = "too_large"
     BINARY = "binary"
+    SYMLINK = "symlink"
+    INVALID_NAME = "invalid_name"
+    SPECIAL_FILE = "special_file"
+    UNREADABLE = "unreadable"
 
 
 class SkippedFile(BaseModel):

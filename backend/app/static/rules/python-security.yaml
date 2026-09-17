@@ -1,0 +1,137 @@
+# Margin's own Opengrep rules for Python. Written for this project, so no third-party
+# rule-pack license applies. Each rule records its CWE, category and confidence.
+rules:
+  - id: python-shell-command-from-dynamic-input
+    languages: [python]
+    severity: ERROR
+    message: >-
+      A shell command is built from dynamic values. If any part comes from user input,
+      an attacker can run arbitrary commands. Pass an argument list without shell=True.
+    metadata: {cwe: "CWE-78", category: security, confidence: high}
+    pattern-either:
+      - pattern: subprocess.$FUNC(f"...", ..., shell=True, ...)
+      - pattern: subprocess.$FUNC("..." + $X, ..., shell=True, ...)
+      - pattern: subprocess.$FUNC("...".format(...), ..., shell=True, ...)
+      - pattern: subprocess.$FUNC("..." % $X, ..., shell=True, ...)
+      - pattern: os.system(f"...")
+      - pattern: os.system("..." + $X)
+      - pattern: os.system("...".format(...))
+
+  - id: python-sql-built-with-string-formatting
+    languages: [python]
+    severity: ERROR
+    message: >-
+      A SQL query is built with string formatting. User input in it allows SQL injection.
+      Use query parameters, for example cursor.execute("... WHERE id = %s", (user_id,)).
+    metadata: {cwe: "CWE-89", category: security, confidence: high}
+    pattern-either:
+      - pattern: $CURSOR.execute(f"...", ...)
+      - pattern: $CURSOR.execute("..." % $X, ...)
+      - pattern: $CURSOR.execute("...".format(...), ...)
+      - pattern: $CURSOR.execute("..." + $X, ...)
+      - pattern: $CURSOR.executemany(f"...", ...)
+
+  - id: python-yaml-load-without-safe-loader
+    languages: [python]
+    severity: ERROR
+    message: >-
+      yaml.load without SafeLoader can construct arbitrary Python objects from the input,
+      which leads to code execution on untrusted YAML. Use yaml.safe_load.
+    metadata: {cwe: "CWE-502", category: security, confidence: high}
+    patterns:
+      - pattern: yaml.load(...)
+      - pattern-not: yaml.load(..., Loader=yaml.SafeLoader, ...)
+      - pattern-not: yaml.load(..., Loader=yaml.CSafeLoader, ...)
+      - pattern-not: yaml.load(..., Loader=SafeLoader, ...)
+      - pattern-not: yaml.load(..., Loader=CSafeLoader, ...)
+
+  - id: python-tls-certificate-verification-disabled
+    languages: [python]
+    severity: WARNING
+    message: >-
+      TLS certificate verification is disabled, so a man-in-the-middle can read or change
+      the traffic. Remove verify=False.
+    metadata: {cwe: "CWE-295", category: security, confidence: high}
+    pattern-either:
+      - pattern: requests.$METHOD(..., verify=False, ...)
+      - pattern: httpx.$METHOD(..., verify=False, ...)
+      - pattern: httpx.Client(..., verify=False, ...)
+      - pattern: httpx.AsyncClient(..., verify=False, ...)
+
+  - id: python-web-debug-mode-enabled
+    languages: [python]
+    severity: WARNING
+    message: >-
+      The web application runs with debug mode on, which exposes an interactive debugger
+      and stack traces. Keep debug off outside local development.
+    metadata: {cwe: "CWE-489", category: security, confidence: medium}
+    pattern: $APP.run(..., debug=True, ...)
+
+  - id: python-password-hashed-with-fast-hash
+    languages: [python]
+    severity: WARNING
+    message: >-
+      A password is hashed with a fast, unsalted hash that is easy to brute-force. Use a
+      password hashing function such as bcrypt, scrypt or argon2.
+    metadata: {cwe: "CWE-916", category: security, confidence: medium}
+    patterns:
+      - pattern-either:
+          - pattern: hashlib.md5($VALUE, ...)
+          - pattern: hashlib.sha1($VALUE, ...)
+          - pattern: hashlib.sha256($VALUE, ...)
+          - pattern: hashlib.md5($VALUE.encode(...), ...)
+          - pattern: hashlib.sha1($VALUE.encode(...), ...)
+          - pattern: hashlib.sha256($VALUE.encode(...), ...)
+      - metavariable-regex:
+          metavariable: $VALUE
+          regex: (?i).*(password|passwd|pwd).*
+
+  - id: python-insecure-random-for-secret
+    languages: [python]
+    severity: WARNING
+    message: >-
+      The random module is predictable and must not generate secrets such as tokens or
+      passwords. Use the secrets module.
+    metadata: {cwe: "CWE-330", category: security, confidence: medium}
+    patterns:
+      - pattern-either:
+          - pattern: $NAME = random.$FUNC(...)
+          - pattern: $NAME = "...".join(random.$FUNC(...))
+          - pattern: '$NAME = "".join(random.$FUNC(...) for $X in $Y)'
+      - metavariable-regex:
+          metavariable: $NAME
+          regex: (?i).*(token|secret|password|passwd|otp|nonce|salt|api_?key).*
+
+  - id: python-jwt-signature-not-verified
+    languages: [python]
+    severity: ERROR
+    message: >-
+      A JWT is decoded without verifying its signature, so anyone can forge its claims.
+      Verify the signature with the expected key and algorithms.
+    metadata: {cwe: "CWE-347", category: security, confidence: high}
+    pattern-either:
+      - pattern: 'jwt.decode(..., options={..., "verify_signature": False, ...}, ...)'
+      - pattern: jwt.decode(..., verify=False, ...)
+
+  - id: python-insecure-temporary-file
+    languages: [python]
+    severity: WARNING
+    message: >-
+      tempfile.mktemp returns a name another process can create first, which enables
+      symlink attacks. Use tempfile.mkstemp or NamedTemporaryFile.
+    metadata: {cwe: "CWE-377", category: security, confidence: high}
+    pattern: tempfile.mktemp(...)
+
+  - id: python-eval-of-dynamic-value
+    languages: [python]
+    severity: ERROR
+    message: >-
+      eval or exec runs a dynamic value as code. If it contains user input, an attacker can
+      run arbitrary code. Parse the data instead, for example with ast.literal_eval or json.
+    metadata: {cwe: "CWE-95", category: security, confidence: medium}
+    patterns:
+      - pattern-either:
+          - pattern: eval($X, ...)
+          - pattern: exec($X, ...)
+      - pattern-not: eval("...", ...)
+      - pattern-not: exec("...", ...)

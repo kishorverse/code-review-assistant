@@ -1,4 +1,5 @@
 import json
+import sys
 from collections.abc import Iterator
 
 import pytest
@@ -25,6 +26,16 @@ def test_json_format_emits_one_parseable_object_per_event(
     assert record["scan_id"] == "abc123"
     assert record["level"] == "info"
     assert "timestamp" in record
+
+
+def test_logs_can_be_sent_to_standard_error(capsys: pytest.CaptureFixture[str]) -> None:
+    configure_logging("INFO", "json", stream=sys.stderr)
+
+    structlog.get_logger().info("to_stderr")
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert json.loads(captured.err.strip())["event"] == "to_stderr"
 
 
 def test_events_below_configured_level_are_dropped(capsys: pytest.CaptureFixture[str]) -> None:
