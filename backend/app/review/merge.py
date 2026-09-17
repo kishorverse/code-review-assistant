@@ -23,7 +23,10 @@ from app.llm.config import PROVIDER_NAMES
 from app.review.answers import JudgementVerdict
 from app.review.reviewer import Judged
 
-REPORTED_STATUSES = frozenset({FindingStatus.OPEN, FindingStatus.NEEDS_REVIEW})
+REPORTED_STATUSES = frozenset(
+    {FindingStatus.OPEN, FindingStatus.NEEDS_REVIEW, FindingStatus.ACCEPTED}
+)
+"""Statuses of findings that count as issues: a reviewer accepting one keeps it reported."""
 CONFIRMED_CONFIDENCE = 0.8
 
 

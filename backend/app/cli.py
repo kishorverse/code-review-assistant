@@ -9,14 +9,13 @@ Examples::
 """
 
 import asyncio
-import json
 import sys
 import tempfile
 from collections import Counter
-from dataclasses import asdict
+from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import IO, Annotated, Any
+from typing import IO, Annotated
 
 import httpx
 import typer
@@ -27,7 +26,7 @@ from app import __version__
 from app.config import Settings, get_settings
 from app.errors import ConfigError, IngestError
 from app.events import CallEvent, ReviewPlanEvent, ScanEvent, StageEvent, ToolEvent
-from app.findings import Finding, FindingStatus, Severity
+from app.findings import FindingStatus, Severity
 from app.ingest.storage import ScanStorage, ScanWorkspace, new_scan_id
 from app.llm.factory import build_router
 from app.llm.models import CallStatus
@@ -41,9 +40,8 @@ from app.pipeline import (
     run_scan,
     upload_ingest,
 )
-from app.review.merge import is_reported, is_unconfident
+from app.report.document import Report, ReviewSection, build_report
 from app.review.planner import DEFAULT_MIN_CONFIDENCE, Depth, ReviewOptions
-from app.review.session import ReviewResult
 from app.static.base import Analyzer, ToolStatus
 from app.static.runner import default_analyzers
 
@@ -143,15 +141,17 @@ def scan(
             errors.print(f"[red]Configuration error:[/red] {error}")
             raise typer.Exit(EXIT_CONFIG_ERROR) from error
 
+    report = build_report(
+        result, source=path.name, min_confidence=min_confidence, generated_at=datetime.now(UTC)
+    )
     if output is None:
-        _render(result, output_format, Console(), min_confidence)
+        _render(report, output_format, Console())
     else:
         with output.open("w", encoding="utf-8") as handle:
-            console = Console(file=handle, width=160, no_color=True)
-            _render(result, output_format, console, min_confidence)
+            _render(report, output_format, Console(file=handle, width=160, no_color=True))
 
     threshold = None if fail_on is FailOn.NEVER else Severity(fail_on)
-    if threshold is not None and _has_finding_at_least(result, threshold, min_confidence):
+    if threshold is not None and _has_finding_at_least(report, threshold):
         raise typer.Exit(EXIT_FINDINGS_AT_THRESHOLD)
 
 
@@ -229,63 +229,11 @@ class ProgressSink:
 _QUIET_CALLS = frozenset({CallStatus.OK, CallStatus.CACHED})
 
 
-def scan_report(
-    result: ScanResult, min_confidence: float = DEFAULT_MIN_CONFIDENCE
-) -> dict[str, Any]:
-    """The JSON document written by ``--format json``. It contains no server paths.
-
-    Every finding is included with its status and confidence; the summary counts
-    only the findings reported by default.
-    """
-    reported = [f for f in result.findings if is_reported(f, min_confidence)]
-    return {
-        "tool": {"name": "margin", "version": __version__},
-        "summary": {
-            "files_scanned": len(result.ingest.files),
-            "files_reviewed": len(result.files),
-            "findings": len(reported),
-            "by_severity": {s.value: n for s, n in Counter(f.severity for f in reported).items()},
-            "not_reported": _not_reported(result.findings, min_confidence),
-        },
-        "skipped_files": [item.model_dump(mode="json") for item in result.ingest.skipped],
-        "tool_runs": [run.model_dump(mode="json") for run in result.static.tool_runs],
-        "review": _review_report(result, min_confidence),
-        "findings": [finding.model_dump(mode="json") for finding in result.findings],
-        "metrics": [metric.model_dump(mode="json") for metric in result.static.metrics],
-    }
-
-
-def _review_report(result: ScanResult, min_confidence: float) -> dict[str, Any] | None:
-    review = result.review
-    if review is None:
-        return None
-    return {
-        "depth": review.depth.value,
-        "min_confidence": min_confidence,
-        "summary": review.summary.model_dump(mode="json") if review.summary else None,
-        "stats": asdict(review.stats),
-        "prompt_versions": review.prompt_versions,
-        "calls": [call.model_dump(mode="json") for call in review.calls],
-    }
-
-
-def _not_reported(findings: list[Finding], min_confidence: float) -> dict[str, int]:
-    dismissed = sum(f.status is FindingStatus.DISMISSED_BY_AI for f in findings)
-    unconfident = sum(
-        f.status is not FindingStatus.DISMISSED_BY_AI and is_unconfident(f, min_confidence)
-        for f in findings
-    )
-    return {"dismissed_by_ai": dismissed, "below_min_confidence": unconfident}
-
-
-def _render(
-    result: ScanResult, output_format: OutputFormat, console: Console, min_confidence: float
-) -> None:
+def _render(report: Report, output_format: OutputFormat, console: Console) -> None:
     if output_format is OutputFormat.JSON:
-        report = scan_report(result, min_confidence)
-        _write_raw(console.file, json.dumps(report, indent=2) + "\n")
+        _write_raw(console.file, report.model_dump_json(indent=2) + "\n")
         return
-    reported = [f for f in result.findings if is_reported(f, min_confidence)]
+    reported = report.reported_findings()
     table = Table(title=f"Margin {__version__}: {len(reported)} findings")
     for column in ("Severity", "Location", "Rule", "Found by", "Title"):
         table.add_column(column, overflow="fold")
@@ -304,27 +252,33 @@ def _render(
             title,
         )
     console.print(table)
-    counts = Counter(f.severity for f in reported)
-    summary = ", ".join(f"{counts[s]} {s.value}" for s in Severity if counts[s])
-    console.print(f"{len(result.ingest.files)} files scanned. {summary or 'No findings.'}")
-    hidden = _not_reported(result.findings, min_confidence)
-    if any(hidden.values()):
+    counts = report.summary
+    breakdown = ", ".join(
+        f"{counts.by_severity[s.value]} {s.value}"
+        for s in Severity
+        if s.value in counts.by_severity
+    )
+    console.print(f"{counts.files_scanned} files scanned. {breakdown or 'No findings.'}")
+    score = report.score
+    console.print(f"Quality score: {score.score}/100 (grade {score.grade}).")
+    hidden = counts.not_reported
+    if hidden.dismissed_by_ai or hidden.below_min_confidence:
         console.print(
-            f"Not shown: {hidden['dismissed_by_ai']} dismissed by AI review, "
-            f"{hidden['below_min_confidence']} below confidence {min_confidence:g}."
+            f"Not shown: {hidden.dismissed_by_ai} dismissed by AI review, "
+            f"{hidden.below_min_confidence} below confidence {report.min_confidence:g}."
         )
-    if result.review is not None:
-        _render_review(result.review, console)
+    if report.review is not None:
+        _render_review(report.review, console)
 
 
-def _render_review(review: ReviewResult, console: Console) -> None:
+def _render_review(review: ReviewSection, console: Console) -> None:
     providers = Counter(call.provider for call in review.calls if call.status is CallStatus.OK)
     used = ", ".join(f"{name} {count}" for name, count in providers.most_common()) or "none"
     stats = review.stats
     console.print(
-        f"AI review ({review.depth.value}): {stats.chunks_reviewed} chunks reviewed, "
-        f"{stats.ai_findings} AI findings, {stats.verified} cross-checked, "
-        f"{stats.tasks_failed} tasks without an answer. Calls answered by: {used}.",
+        f"AI review ({review.depth.value}): {stats['chunks_reviewed']} chunks reviewed, "
+        f"{stats['ai_findings']} AI findings, {stats['verified']} cross-checked, "
+        f"{stats['tasks_failed']} tasks without an answer. Calls answered by: {used}.",
         markup=False,
     )
     if review.summary is not None:
@@ -336,7 +290,5 @@ def _write_raw(stream: IO[str], text: str) -> None:
     stream.flush()
 
 
-def _has_finding_at_least(result: ScanResult, threshold: Severity, min_confidence: float) -> bool:
-    return any(
-        f.severity.rank >= threshold.rank for f in result.findings if is_reported(f, min_confidence)
-    )
+def _has_finding_at_least(report: Report, threshold: Severity) -> bool:
+    return any(f.severity.rank >= threshold.rank for f in report.reported_findings())
