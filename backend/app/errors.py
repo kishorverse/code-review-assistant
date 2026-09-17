@@ -131,5 +131,9 @@ class AllProvidersUnavailableError(MarginError):
         self.attempts = list(attempts)
 
 
+class AnswerFormatError(MarginError):
+    """A model's answer has no usable structure, such as missing or malformed JSON."""
+
+
 class ConfigError(MarginError):
     """A configuration file is missing or invalid."""
