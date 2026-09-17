@@ -5,7 +5,8 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from app.cli import EXIT_FINDINGS_AT_THRESHOLD, EXIT_REJECTED, app
+from app.cli import EXIT_CONFIG_ERROR, EXIT_FINDINGS_AT_THRESHOLD, EXIT_REJECTED, app
+from app.config import Settings
 
 VULNERABLE = (
     "import os\nimport subprocess\n\n\n"
@@ -70,3 +71,71 @@ def test_rejected_archives_exit_with_a_clear_message(tmp_path: Path) -> None:
 
     assert result.exit_code == EXIT_REJECTED
     assert "outside the project" in result.stderr
+
+
+@pytest.fixture
+def mock_models(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Review with in-process models, never the keys in the developer's real .env."""
+    monkeypatch.setattr("app.cli.get_settings", lambda: Settings(_env_file=None, llm_mode="mock"))
+
+
+@pytest.mark.usefixtures("mock_models")
+def test_review_uses_only_the_local_model_without_consent(project: Path) -> None:
+    result = runner.invoke(app, ["scan", str(project), "--depth", "quick", "-f", "json", "-q"])
+
+    assert result.exit_code == 0, result.output
+    review = json.loads(result.stdout)["review"]
+    assert review["depth"] == "quick"
+    assert {call["provider"] for call in review["calls"]} == {"local"}
+    assert review["summary"]["headline"] == "Mock summary: no model was called."
+    assert review["stats"]["chunks_reviewed"] == 1
+    assert review["prompt_versions"]["task_review"] == "1"
+
+
+@pytest.mark.usefixtures("mock_models")
+def test_allow_external_lets_hosted_providers_review(project: Path) -> None:
+    result = runner.invoke(
+        app, ["scan", str(project), "--depth", "quick", "--allow-external", "-f", "json", "-q"]
+    )
+
+    assert result.exit_code == 0, result.output
+    calls = json.loads(result.stdout)["review"]["calls"]
+    assert calls[0]["provider"] == "nvidia"
+
+
+@pytest.mark.usefixtures("mock_models")
+def test_table_output_summarizes_the_review(project: Path) -> None:
+    result = runner.invoke(app, ["scan", str(project), "--depth", "quick", "-q"])
+
+    assert result.exit_code == 0, result.output
+    assert "AI review (quick): 1 chunks reviewed" in result.stdout
+    assert "Summary: Mock summary: no model was called." in result.stdout
+
+
+def test_review_without_configured_providers_warns_and_keeps_static_findings(
+    project: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("app.cli.get_settings", lambda: Settings(_env_file=None))
+
+    result = runner.invoke(app, ["scan", str(project), "--depth", "quick", "-f", "json"])
+
+    assert result.exit_code == 0, result.output
+    assert "No LLM providers are configured" in result.stderr
+    report = json.loads(result.stdout)
+    assert report["review"]["stats"]["tasks_failed"] == 1
+    assert report["findings"][0]["rule_id"] == "B602"
+
+
+def test_invalid_provider_config_exits_with_a_config_error(
+    project: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    missing = tmp_path / "providers.yaml"
+    monkeypatch.setattr(
+        "app.cli.get_settings",
+        lambda: Settings(_env_file=None, llm_mode="mock", providers_config_path=missing),
+    )
+
+    result = runner.invoke(app, ["scan", str(project), "--depth", "quick", "-q"])
+
+    assert result.exit_code == EXIT_CONFIG_ERROR
+    assert "Configuration error" in result.stderr
