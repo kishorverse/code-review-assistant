@@ -9,7 +9,7 @@ Margin reviews a single source file or a zipped project in two passes.
 
 A router that knows each provider's rate limits sends every task to the best-suited model and falls back cleanly when a quota runs out. A verifier checks evidence and runs a second model on serious findings, so false positives are filtered out before you see them.
 
-> **Status:** in active development. Safe upload handling, structure-aware chunking, static analysis, the rate-limit-aware LLM router and hybrid LLM review with cross-model verification work today from the CLI; the web API and the web UI are being added module by module.
+> **Status:** in active development. Safe upload handling, structure-aware chunking, static analysis, the rate-limit-aware LLM router, hybrid LLM review with cross-model verification, the web API and HTML, JSON and SARIF reports work today; the web UI is being added next.
 
 ## Planned features
 
@@ -68,6 +68,16 @@ uv run uvicorn app.main:create_app --factory --reload
 ```
 
 The API runs at http://127.0.0.1:8000, with interactive docs at http://127.0.0.1:8000/docs.
+Upload a project and follow the scan:
+
+```bash
+curl -F file=@project.zip -F depth=standard -F allow_external=true http://127.0.0.1:8000/api/scans
+curl -N http://127.0.0.1:8000/api/scans/<id>/events            # live progress (server-sent events)
+curl -o report.html "http://127.0.0.1:8000/api/scans/<id>/report?format=html"
+```
+
+Uploads and everything derived from them are deleted after `RETENTION_HOURS` (24 by default). See the
+[API reference](docs/api.md).
 
 ### Frontend
 
@@ -99,6 +109,8 @@ uv run margin scan project.zip --format json --output report.json
 uv run margin scan src --fail-on high          # exit code 1 if any high or critical finding
 uv run margin scan src --depth standard --allow-external   # add LLM review by hosted models
 uv run margin scan src --depth quick           # LLM review by a local model only
+uv run margin scan src --format sarif --output margin.sarif   # for GitHub code scanning
+uv run margin scan src --format html --output report.html     # standalone report
 ```
 
 The CLI runs Ruff, Bandit, mypy, Radon, Vulture, Lizard and detect-secrets, plus Opengrep when its binary is
@@ -108,6 +120,8 @@ installed ([releases](https://github.com/opengrep/opengrep/releases); set `OPENG
 performance and style, and `deep` also cross-checks medium-severity AI findings with a second model. Code
 goes to hosted providers only with `--allow-external`, after detected secrets are masked; otherwise only a
 local model is used. AI findings below `--min-confidence` (default 0.6) are left out of the report.
+
+Every report includes a quality score from 0 to 100 with a letter grade, and the formula that produced it.
 
 Exit codes: `0` success, `1` a finding reached `--fail-on`, `2` the input was rejected, `3` the provider
 configuration is invalid.
@@ -140,6 +154,7 @@ uv run pre-commit install
 - [Static analysis engine](docs/static-analysis.md): analyzers, finding normalization, and how untrusted code is analyzed safely
 - [LLM routing](docs/routing.md): providers, task routing, rate limits, circuit breakers, caching and the consent gate
 - [LLM review and verification](docs/review.md): depth, secret masking, prompts, grounding, judgements and cross-model checks
+- [Web API](docs/api.md): scans, live events, reviewer decisions, reports, storage and retention
 
 ## License
 
