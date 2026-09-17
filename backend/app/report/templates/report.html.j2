@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="Margin {{ report.tool.version }}">
+<title>Margin review: {{ report.source }}</title>
+<style>
+  :root {
+    --bg: #fbfaf7; --surface: #ffffff; --ink: #1d1d1b; --muted: #5d5b55; --line: #e4e1d8;
+    --accent: #2b5d8a; --code-bg: #f3f1ea;
+    --critical: #a4161a; --high: #c2410c; --medium: #a16207; --low: #3f6212; --info: #57534e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151514; --surface: #1d1d1b; --ink: #ecebe6; --muted: #a8a59c; --line: #34332f;
+      --accent: #7fb2e5; --code-bg: #262522;
+      --critical: #f87171; --high: #fb923c; --medium: #facc15; --low: #a3e635; --info: #d6d3d1;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 19px; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  h3 { font-size: 15px; margin: 24px 0 8px; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
+  p, li { margin: 4px 0; }
+  .muted { color: var(--muted); }
+  .cover { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; justify-content: space-between; }
+  .score { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 20px; text-align: center; min-width: 150px; }
+  .score b { display: block; font-size: 40px; line-height: 1.1; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .chip { border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; background: var(--surface); font-size: 13px; }
+  .sev { display: inline-block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+         border: 1px solid currentColor; border-radius: 4px; padding: 0 6px; }
+  .sev-critical { color: var(--critical); } .sev-high { color: var(--high); } .sev-medium { color: var(--medium); }
+  .sev-low { color: var(--low); } .sev-info { color: var(--info); }
+  .finding { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin: 10px 0; break-inside: avoid; }
+  .finding header { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+  .finding h4 { margin: 0; font-size: 15px; }
+  .meta { font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 4px 0 8px; }
+  .note { border-left: 3px solid var(--accent); padding-left: 10px; margin: 8px 0; }
+  pre { background: var(--code-bg); border-radius: 6px; padding: 8px 10px; overflow-x: auto; margin: 8px 0;
+        font: 13px/1.45 ui-monospace, "Cascadia Code", Consolas, monospace; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 13px; }
+  @media print { body { background: #fff; } .finding, .score, .chip { border-color: #999; } h2 { break-after: avoid; } }
+</style>
+</head>
+<body>
+<main>
+  <section class="cover">
+    <div>
+      <h1>Code review: {{ report.source }}</h1>
+      <p class="muted">
+        Generated {{ report.generated_at.strftime("%Y-%m-%d %H:%M UTC") }} by Margin {{ report.tool.version }}
+        {% if report.review %} &middot; AI review depth: {{ report.review.depth.value }}{% else %} &middot; static analysis only{% endif %}
+      </p>
+      <p>{{ report.summary.files_scanned }} files scanned, {{ report.summary.files_reviewed }} reviewed,
+         {{ report.summary.findings }} findings reported.</p>
+      <div class="chips">
+        {% for severity in severities if severity in report.summary.by_severity %}
+        <span class="chip"><span class="sev sev-{{ severity }}">{{ severity }}</span> {{ report.summary.by_severity[severity] }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="score" aria-label="Quality score">
+      <b>{{ report.score.score }}</b>
+      <span>out of 100 &middot; grade {{ report.score.grade }}</span>
+    </div>
+  </section>
+
+  {% if report.review and report.review.summary %}
+  {% set summary = report.review.summary %}
+  <h2>Executive summary</h2>
+  <p><strong>{{ summary.headline }}</strong></p>
+  <div class="grid">
+    {% if summary.strengths %}
+    <div><h3>Strengths</h3><ul>{% for item in summary.strengths %}<li>{{ item }}</li>{% endfor %}</ul></div>
+    {% endif %}
+    {% if summary.top_risks %}
+    <div><h3>Top risks</h3><ul>
+      {% for risk in summary.top_risks %}<li><strong>{{ risk.title }}</strong>{% if risk.files %} ({{ risk.files | join(", ") }}){% endif %}{% if risk.why %}: {{ risk.why }}{% endif %}</li>{% endfor %}
+    </ul></div>
+    {% endif %}
+    {% if summary.recommended_next_steps %}
+    <div><h3>Next steps</h3><ol>{% for step in summary.recommended_next_steps %}<li>{{ step }}</li>{% endfor %}</ol></div>
+    {% endif %}
+  </div>
+  <p class="muted">Written by a language model from the finding titles and counts below; it saw no code.</p>
+  {% endif %}
+
+  <h2>At a glance</h2>
+  <div class="grid">
+    <table>
+      <thead><tr><th>Category</th><th class="num">Findings</th></tr></thead>
+      <tbody>
+      {% for category, count in report.summary.by_category.items() %}
+        <tr><td>{{ category }}</td><td class="num">{{ count }}</td></tr>
+      {% else %}
+        <tr><td colspan="2" class="muted">No reported findings.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Files with the most findings</th><th class="num">Findings</th></tr></thead>
+      <tbody>
+      {% for path, count in top_files %}
+        <tr><td><code>{{ path }}</code></td><td class="num">{{ count }}</td></tr>
+      {% else %}
+        <tr><td colspan="2" class="muted">None.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Findings</h2>
+  {% for section in sections %}
+  <h3>{{ section.path }}</h3>
+  {% for finding in section.findings %}
+  <article class="finding" id="finding-{{ finding.id }}">
+    <header>
+      <span class="sev sev-{{ finding.severity.value }}">{{ finding.severity.value }}</span>
+      <h4>{{ finding.title }}</h4>
+    </header>
+    <div class="meta">
+      <span>Lines {{ finding.start_line }}{% if finding.end_line != finding.start_line %}&ndash;{{ finding.end_line }}{% endif %}</span>
+      <span>{{ finding.category.value }}</span>
+      {% if finding.rule_id %}<span>Rule <code>{{ finding.rule_id }}</code></span>{% endif %}
+      {% if finding.cwe %}<span>{{ finding.cwe }}</span>{% endif %}
+      <span>Found by {{ finding.sources | join(", ") }}</span>
+      {% if finding.verified_by %}<span>Verified by {{ finding.verified_by | join(", ") }}</span>{% endif %}
+      <span>Confidence {{ "%.2f" | format(finding.confidence) }}</span>
+      {% if finding.status.value == "needs_review" %}<span><strong>Needs human review</strong></span>{% endif %}
+      {% if finding.status.value == "accepted" %}<span>Accepted by a reviewer</span>{% endif %}
+    </div>
+    <p>{{ finding.message }}</p>
+    {% if finding.rationale %}<p><strong>Why it matters:</strong> {{ finding.rationale }}</p>{% endif %}
+    {% if finding.evidence %}<pre><code>{{ finding.evidence }}</code></pre>{% endif %}
+    {% if finding.suggestion %}<p><strong>Suggested change:</strong> {{ finding.suggestion }}</p>{% endif %}
+    {% if finding.ai_note %}<p class="note">{{ finding.ai_note }}</p>{% endif %}
+  </article>
+  {% endfor %}
+  {% else %}
+  <p class="muted">No findings to report.</p>
+  {% endfor %}
+
+  {% if hidden %}
+  <h2>Not counted</h2>
+  <p class="muted">Kept for transparency: findings dismissed by AI review, rejected by a reviewer, or reported by models with low confidence.</p>
+  <table>
+    <thead><tr><th>Finding</th><th>Location</th><th>Reason</th></tr></thead>
+    <tbody>
+    {% for item in hidden %}
+      <tr><td>{{ item.finding.title }}</td><td><code>{{ item.finding.file_path }}:{{ item.finding.start_line }}</code></td><td>{{ item.reason }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if metrics %}
+  <h2>Metrics</h2>
+  <table>
+    <thead><tr><th>File</th><th class="num">Lines</th><th class="num">Source lines</th><th class="num">Maintainability</th><th class="num">Max complexity</th></tr></thead>
+    <tbody>
+    {% for row in metrics %}
+      <tr>
+        <td><code>{{ row.path }}</code></td>
+        <td class="num">{{ row.lines if row.lines is not none else "&ndash;" | safe }}</td>
+        <td class="num">{{ row.source_lines if row.source_lines is not none else "&ndash;" | safe }}</td>
+        <td class="num">{{ "%.1f" | format(row.maintainability_index) if row.maintainability_index is not none else "&ndash;" | safe }}</td>
+        <td class="num">{{ row.max_complexity if row.max_complexity is not none else "&ndash;" | safe }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if report.review %}
+  <h2>Models and provenance</h2>
+  {% if usage %}
+  <table>
+    <thead><tr><th>Provider</th><th>Model</th><th class="num">Answered</th><th class="num">Failed</th><th class="num">p50 / p95</th><th>Files whose code it received</th></tr></thead>
+    <tbody>
+    {% for item in usage %}
+      <tr>
+        <td>{{ item.provider }}</td>
+        <td>{{ item.models | join(", ") }}</td>
+        <td class="num">{{ item.answered }}</td>
+        <td class="num">{{ item.failed }}</td>
+        <td class="num">{{ item.p50_ms }} / {{ item.p95_ms }} ms</td>
+        <td>{% for path in item.files %}<code>{{ path }}</code>{% if not loop.last %}, {% endif %}{% else %}<span class="muted">none</span>{% endfor %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No model received any code.</p>
+  {% endif %}
+  <p class="muted">Prompt versions: {% for name, version in report.review.prompt_versions.items() %}{{ name }} v{{ version }}{% if not loop.last %}, {% endif %}{% endfor %}.</p>
+  {% endif %}
+
+  <h2>Method and limitations</h2>
+  <p><strong>Quality score.</strong> <code>{{ report.score.formula }}</code>. For this project:
+    {{ report.score.kloc }} KLOC, finding penalty {{ report.score.finding_penalty }},
+    complexity penalty {{ report.score.complexity_penalty }}
+    ({{ report.score.complex_functions }} of {{ report.score.functions }} functions). Grades: A from 90, B from 75, C from 60, D from 40, E below.</p>
+  <p><strong>What counts.</strong> Findings that are open, need review or were accepted. AI-only findings below confidence {{ report.min_confidence }} are listed under &ldquo;Not counted&rdquo;.</p>
+  <p><strong>Privacy.</strong> Detected secrets are masked before any code reaches a model, hosted models receive code only with explicit consent, and uploaded code is deleted after the retention period.</p>
+  <p><strong>Limitations.</strong> Static analysis sees patterns, not intent. Model findings must quote code at the cited lines and serious ones are cross-checked by a second model, but models can still be wrong. Treat every finding as a prompt for human judgement.</p>
+</main>
+</body>
+</html>
