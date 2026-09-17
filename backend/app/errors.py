@@ -137,3 +137,26 @@ class AnswerFormatError(MarginError):
 
 class ConfigError(MarginError):
     """A configuration file is missing or invalid."""
+
+
+class ScanNotFoundError(MarginError):
+    """No scan exists with this id, or its id is not a Margin scan id.
+
+    Both cases look the same to clients, so ids cannot be probed.
+    """
+
+
+class ScanNotFinishedError(MarginError):
+    """The scan has no results yet."""
+
+
+class UploadTooLargeError(MarginError):
+    """An upload exceeded the size limit while it was being received."""
+
+
+class UnknownFindingError(MarginError):
+    """No finding with the given id exists in the report."""
+
+
+class FileNotInScanError(MarginError):
+    """The requested path is not one of the scan's extracted files."""

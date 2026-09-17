@@ -2,8 +2,9 @@ import json
 
 import pytest
 
+from app.errors import UnknownFindingError
 from app.findings import FindingStatus
-from app.report.document import Report, UnknownFindingError, build_report, set_finding_status
+from app.report.document import Report, build_report, set_finding_status
 from tests.report.conftest import GENERATED_AT, scan_result
 
 

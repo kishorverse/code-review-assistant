@@ -15,7 +15,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
 from app import __version__
-from app.errors import MarginError
+from app.errors import UnknownFindingError
 from app.findings import Finding, FindingStatus
 from app.ingest.models import SkippedFile
 from app.llm.models import CallRecord
@@ -28,10 +28,6 @@ from app.static.base import FileMetrics, ToolRun
 
 REVIEWER_STATUSES = frozenset({FindingStatus.OPEN, FindingStatus.ACCEPTED, FindingStatus.REJECTED})
 """Statuses a person may set on a finding. ``open`` restores a dismissed or rejected finding."""
-
-
-class UnknownFindingError(MarginError):
-    """No finding with the given id exists in the report."""
 
 
 class ToolInfo(BaseModel):
