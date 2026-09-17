@@ -6,6 +6,10 @@ line and the SHA-1 of its value. The same value can appear on other lines
 line counts as sensitive when it was reported, or when any value on it hashes
 to a reported secret. The index stores only line numbers and hashes, never the
 secrets themselves.
+
+Evidence shown to people replaces a sensitive line entirely. Code sent to a
+model keeps its shape instead: secrets become numbered placeholders, so the
+model can still review the surrounding code and report the hardcoded secret.
 """
 
 import hashlib
@@ -17,6 +21,10 @@ from app.findings import REDACTED_EVIDENCE
 
 _SEPARATORS = re.compile(r"""[\s'"`,;()\[\]{}<>=:@/\\]+""")
 _QUOTED = re.compile(r"""(['"`])(.+?)\1""")
+_KEY_BLOCK_BEGIN = re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----")
+_KEY_BLOCK_END = re.compile(r"-----END [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----")
+MAX_KEY_BLOCK_LINES = 200
+"""Masking stops here if a key block never ends, so a stray header cannot hide a whole file."""
 
 
 @dataclass
@@ -38,9 +46,76 @@ class SecretIndex:
         """Whether the line was reported or contains a value matching a detected secret."""
         if line_number in self.reported_lines.get(file_path, ()):
             return True
+        return bool(self.matching_values(text))
+
+    def matching_values(self, text: str) -> set[str]:
+        """Substrings of ``text`` whose hash matches a detected secret."""
         if not self.value_hashes:
-            return False
-        return any(_sha1(value) in self.value_hashes for value in candidate_values(text))
+            return set()
+        return {value for value in candidate_values(text) if _sha1(value) in self.value_hashes}
+
+
+class SecretMasker:
+    """Replaces secrets in one file's lines with ``<REDACTED_SECRET_n>`` placeholders.
+
+    - A value matching a detected secret is replaced wherever it appears.
+    - On a reported line without such a value, string literals are replaced, or
+      the whole line when it has none.
+    - The body of a private key block is replaced line by line, because detectors
+      report only the line where the block begins.
+
+    A value keeps one placeholder number throughout the file, so a model can still
+    see that two lines use the same credential.
+    """
+
+    def __init__(self, file_path: str, index: SecretIndex) -> None:
+        self._file_path = file_path
+        self._index = index
+        self._placeholders: dict[str, str] = {}
+
+    def mask_lines(self, lines: Sequence[str]) -> list[str]:
+        """Mask a whole file, given as its lines in order starting at line 1."""
+        masked: list[str] = []
+        key_block_lines = 0
+        for number, line in enumerate(lines, start=1):
+            begins, ends = _KEY_BLOCK_BEGIN.search(line), _KEY_BLOCK_END.search(line)
+            if key_block_lines and not ends and key_block_lines <= MAX_KEY_BLOCK_LINES:
+                masked.append(self._mask_whole_line(line))
+                key_block_lines += 1
+                continue
+            key_block_lines = 1 if begins and not ends else 0
+            if begins and ends:
+                masked.append(self._mask_literals(line))
+            else:
+                masked.append(self._mask_line(number, line))
+        return masked
+
+    def _mask_line(self, number: int, line: str) -> str:
+        if not self._index.is_sensitive(self._file_path, number, line):
+            return line
+        values = sorted(self._index.matching_values(line), key=len, reverse=True)
+        if not values:
+            return self._mask_literals(line)
+        for value in values:
+            line = line.replace(value, self._placeholder(value))
+        return line
+
+    def _mask_literals(self, line: str) -> str:
+        if not _QUOTED.search(line):
+            return self._mask_whole_line(line)
+        return _QUOTED.sub(
+            lambda match: f"{match.group(1)}{self._placeholder(match.group(2))}{match.group(1)}",
+            line,
+        )
+
+    def _mask_whole_line(self, line: str) -> str:
+        indentation = line[: len(line) - len(line.lstrip())]
+        return f"{indentation}{self._placeholder(line.strip())}"
+
+    def _placeholder(self, value: str) -> str:
+        if value not in self._placeholders:
+            self._placeholders[value] = f"<REDACTED_SECRET_{len(self._placeholders) + 1}>"
+        return self._placeholders[value]
 
 
 def candidate_values(text: str) -> set[str]:
