@@ -2,7 +2,7 @@
 
 Model availability changes often, so model ids are never hard-coded. Run this
 from ``backend/`` after adding keys to ``.env``, then copy the ids you choose
-into ``.env``::
+into ``.env``. Models on a running local server, such as Ollama, are listed too::
 
     uv run python scripts/list_models.py
     uv run python scripts/list_models.py --match llama
@@ -32,6 +32,7 @@ class ProviderSource:
     key: SecretStr | None
     base_url: str
     fetch: Fetcher
+    requires_key: bool = True
 
 
 @dataclass(frozen=True)
@@ -61,8 +62,12 @@ async def fetch_gemini_models(client: httpx.AsyncClient, base_url: str, api_key:
 async def fetch_openai_compatible_models(
     client: httpx.AsyncClient, base_url: str, token: str
 ) -> list[str]:
-    """Return model ids from an OpenAI-compatible ``/models`` endpoint."""
-    response = await client.get(f"{base_url}/models", headers={"Authorization": f"Bearer {token}"})
+    """Return model ids from an OpenAI-compatible ``/models`` endpoint.
+
+    Local servers need no token, so an empty token sends no ``Authorization`` header.
+    """
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    response = await client.get(f"{base_url}/models", headers=headers)
     response.raise_for_status()
     return sorted(model["id"] for model in response.json().get("data", []))
 
@@ -91,15 +96,30 @@ def provider_sources(settings: Settings) -> list[ProviderSource]:
             settings.nvidia_base_url,
             fetch_openai_compatible_models,
         ),
+        ProviderSource(
+            "local",
+            "LOCAL_BASE_URL",
+            None,
+            settings.local_base_url,
+            fetch_openai_compatible_models,
+            requires_key=False,
+        ),
     ]
 
 
 async def list_provider_models(source: ProviderSource, client: httpx.AsyncClient) -> ProviderModels:
     """List one provider's models, turning expected failures into a readable note."""
-    if source.key is None:
+    if source.requires_key and source.key is None:
         return ProviderModels(source.name, [], f"not configured (set {source.env_var})")
+    key = source.key.get_secret_value() if source.key else ""
     try:
-        models = await source.fetch(client, source.base_url, source.key.get_secret_value())
+        models = await source.fetch(client, source.base_url, key)
+    except httpx.ConnectError:
+        if source.requires_key:
+            return ProviderModels(source.name, [], "request failed: ConnectError")
+        return ProviderModels(
+            source.name, [], f"no server at {source.base_url} (start one or set {source.env_var})"
+        )
     except httpx.HTTPStatusError as error:
         return ProviderModels(source.name, [], f"request failed: HTTP {error.response.status_code}")
     except httpx.HTTPError as error:
