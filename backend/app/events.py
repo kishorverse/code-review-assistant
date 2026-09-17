@@ -14,6 +14,15 @@ from app.llm.models import CallRecord
 from app.static.base import ToolStatus
 
 
+class ScanStatus(StrEnum):
+    """Where a scan is in its life."""
+
+    QUEUED = "queued"
+    RUNNING = "running"
+    DONE = "done"
+    FAILED = "failed"
+
+
 class ScanStage(StrEnum):
     """Pipeline stages, in order."""
 
@@ -77,8 +86,18 @@ class CallEvent(BaseModel):
     call: CallRecord
 
 
+class StatusEvent(BaseModel):
+    """The scan's status changed. ``done`` and ``failed`` are the last event of a scan."""
+
+    model_config = ConfigDict(frozen=True)
+
+    kind: Literal["status"] = "status"
+    status: ScanStatus
+    message: str | None = None
+
+
 ScanEvent = Annotated[
-    StageEvent | ToolEvent | FindingEvent | ReviewPlanEvent | CallEvent,
+    StageEvent | ToolEvent | FindingEvent | ReviewPlanEvent | CallEvent | StatusEvent,
     Field(discriminator="kind"),
 ]
 

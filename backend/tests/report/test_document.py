@@ -11,6 +11,7 @@ def test_counts_only_reported_findings(report: Report) -> None:
     counts = report.summary
 
     assert (counts.files_scanned, counts.files_reviewed, counts.findings) == (2, 1, 2)
+    assert report.scanned_files == ["README.md", "app/db.py"]
     assert counts.by_severity == {"high": 1, "medium": 1}
     assert counts.by_category == {"security": 1, "bug": 1}
     assert counts.not_reported.model_dump() == {

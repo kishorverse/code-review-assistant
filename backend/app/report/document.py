@@ -99,6 +99,7 @@ class Report(BaseModel):
     min_confidence: float = Field(ge=0.0, le=1.0)
     summary: ReportCounts
     score: QualityScore
+    scanned_files: list[str]
     files: list[ReviewedFile]
     skipped_files: list[SkippedFile]
     tool_runs: list[ToolRun]
@@ -143,6 +144,7 @@ def build_report(
             result.findings, len(result.ingest.files), len(files), min_confidence
         ),
         score=score_findings(result.findings, files, result.static.metrics, min_confidence),
+        scanned_files=result.ingest.files,
         files=files,
         skipped_files=result.ingest.skipped,
         tool_runs=result.static.tool_runs,
