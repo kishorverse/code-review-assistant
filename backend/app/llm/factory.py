@@ -97,6 +97,7 @@ def live_providers(
                 client=client,
                 clock=clock,
                 timeout_seconds=gemini.timeout_seconds,
+                thinking_level=gemini.thinking_level,
             )
         )
     for endpoint in _openai_compatible_endpoints(settings):

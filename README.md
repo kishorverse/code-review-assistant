@@ -9,7 +9,7 @@ Margin reviews a single source file or a zipped project in two passes.
 
 A router that knows each provider's rate limits sends every task to the best-suited model and falls back cleanly when a quota runs out. A verifier checks evidence and runs a second model on serious findings, so false positives are filtered out before you see them.
 
-> **Status:** in active development. Safe upload handling, structure-aware chunking, the static analysis engine with its CLI, and the rate-limit-aware LLM router work today; LLM review, the web API and the web UI are being added module by module.
+> **Status:** in active development. Safe upload handling, structure-aware chunking, static analysis, the rate-limit-aware LLM router and hybrid LLM review with cross-model verification work today from the CLI; the web API and the web UI are being added module by module.
 
 ## Planned features
 
@@ -94,14 +94,23 @@ Put the chosen ids in `.env` (`GEMINI_MODEL`, `HF_MODEL_LARGE`, `HF_MODEL_SMALL`
 
 ```bash
 cd backend
-uv run margin scan path/to/project            # table of findings
+uv run margin scan path/to/project            # static analysis, table of findings
 uv run margin scan project.zip --format json --output report.json
 uv run margin scan src --fail-on high          # exit code 1 if any high or critical finding
+uv run margin scan src --depth standard --allow-external   # add LLM review by hosted models
+uv run margin scan src --depth quick           # LLM review by a local model only
 ```
 
 The CLI runs Ruff, Bandit, mypy, Radon, Vulture, Lizard and detect-secrets, plus Opengrep when its binary is
 installed ([releases](https://github.com/opengrep/opengrep/releases); set `OPENGREP_PATH` if it is not on `PATH`).
-Exit codes: `0` success, `1` a finding reached `--fail-on`, `2` the input was rejected.
+
+`--depth` adds LLM review: `quick` reviews risky chunks, `standard` reviews every chunk for bugs, security,
+performance and style, and `deep` also cross-checks medium-severity AI findings with a second model. Code
+goes to hosted providers only with `--allow-external`, after detected secrets are masked; otherwise only a
+local model is used. AI findings below `--min-confidence` (default 0.6) are left out of the report.
+
+Exit codes: `0` success, `1` a finding reached `--fail-on`, `2` the input was rejected, `3` the provider
+configuration is invalid.
 
 ### Quality checks
 
@@ -130,6 +139,7 @@ uv run pre-commit install
 - [Tech stack](docs/tech-stack.md)
 - [Static analysis engine](docs/static-analysis.md): analyzers, finding normalization, and how untrusted code is analyzed safely
 - [LLM routing](docs/routing.md): providers, task routing, rate limits, circuit breakers, caching and the consent gate
+- [LLM review and verification](docs/review.md): depth, secret masking, prompts, grounding, judgements and cross-model checks
 
 ## License
 

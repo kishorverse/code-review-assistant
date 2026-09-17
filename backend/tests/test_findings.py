@@ -67,3 +67,10 @@ def test_shorten_title_collapses_whitespace_and_truncates() -> None:
     long_title = shorten_title("word " * 40)
     assert len(long_title) == MAX_TITLE_LENGTH
     assert long_title.endswith("…")
+
+
+def test_ai_review_fields_start_empty() -> None:
+    finding = make_finding()
+
+    assert (finding.suggestion, finding.verified_by, finding.ai_note) == (None, [], None)
+    assert make_finding().verified_by is not finding.verified_by

@@ -230,3 +230,26 @@ def test_parse_duration() -> None:
     assert parse_duration("34s") == 34.0
     assert parse_duration("soon") is None
     assert parse_duration(None) is None
+
+
+async def test_thinking_level_is_sent_only_when_configured(
+    respx_mock: respx.MockRouter, client: httpx.AsyncClient, clock: FakeClock
+) -> None:
+    answer = {"candidates": [{"content": {"parts": [{"text": "{}"}]}}]}
+    route = respx_mock.post(URL).mock(return_value=httpx.Response(200, json=answer))
+    thinking = GeminiProvider(
+        model=MODEL,
+        base_url=BASE_URL,
+        api_key=SecretStr("g-key"),
+        client=client,
+        clock=clock,
+        thinking_level="low",
+    )
+
+    await thinking.complete(REQUEST)
+    configured = json.loads(route.calls.last.request.content)["generationConfig"]
+    await gemini(client, clock).complete(REQUEST)
+    default = json.loads(route.calls.last.request.content)["generationConfig"]
+
+    assert configured["thinkingConfig"] == {"thinkingLevel": "low"}
+    assert "thinkingConfig" not in default

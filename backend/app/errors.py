@@ -112,6 +112,10 @@ class ProviderRequestError(ProviderError):
     """
 
 
+class InvalidResponseError(ProviderRequestError):
+    """The provider answered, but not in a form the caller can use, such as malformed JSON."""
+
+
 class AllProvidersUnavailableError(MarginError):
     """No provider could complete a request; the caller falls back to static results only.
 
@@ -125,6 +129,10 @@ class AllProvidersUnavailableError(MarginError):
         super().__init__(f"no provider could complete the {task} task ({tried or 'none enabled'})")
         self.task = task
         self.attempts = list(attempts)
+
+
+class AnswerFormatError(MarginError):
+    """A model's answer has no usable structure, such as missing or malformed JSON."""
 
 
 class ConfigError(MarginError):

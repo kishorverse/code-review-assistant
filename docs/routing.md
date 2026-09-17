@@ -63,9 +63,9 @@ Every attempt produces a `CallRecord`: provider, model, status, latency, token c
 | HTTP 401 / 403, or Gemini's HTTP 400 `API_KEY_INVALID` | `auth_failed` | 1 hour; a rejected key will not start working by itself |
 | HTTP 404, an invalid base URL, or a key that cannot be sent | `misconfigured` | 1 hour; fix the model id or `*_BASE_URL` |
 | Timeout, connection error, HTTP 408 / 5xx, or a response that is not the API's JSON | `unavailable` | 30 s after 3 failures without a success in between |
-| Any other 4xx, a blocked prompt, an empty answer, or an answer cut off at the output token limit | `rejected` | None: the problem is this request, so the next provider is tried and the provider keeps serving other requests |
+| Any other 4xx, a blocked prompt, an empty answer, an answer cut off at the output token limit, or an answer the caller's validator rejects (such as prose instead of the requested JSON) | `rejected` | None: the problem is this request, so the next provider is tried and the provider keeps serving other requests |
 
-A truncated answer is never returned or cached, even if some text came back.
+A truncated answer is never returned or cached, even if some text came back. Callers can pass a validator to `Router.complete`; an answer it rejects is treated the same way, and a cached answer that fails it is ignored.
 
 Tokens reserved for a request the provider refused without processing it (429, 402, 401/403, 404) are returned to the budget.
 
@@ -106,5 +106,6 @@ The provider is not part of the key, but a cached answer is only served if its p
 | | `max_concurrency` | Concurrent calls (1 for a local model). |
 | | `timeout_seconds` | Upper bound on one call. |
 | | `json_mode` | Send `response_format: json_object`; turn off for servers that reject it. |
+| | `thinking_level` | Gemini only: `minimal`, `low`, `medium` or `high`. Gemini 3 models think before answering and thinking tokens count toward the output limit, so `low` keeps reviews fast. Leave it out for Gemini 2.5 models. |
 | `routing.<task>` | list | Provider order for the task. |
 | `router` | `safety`, `interactive_max_wait_seconds`, `batch_max_wait_seconds`, `cache_entries` | Router-wide behaviour. |

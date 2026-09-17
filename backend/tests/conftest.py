@@ -1,6 +1,7 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 
 import pytest
+import structlog
 from httpx import ASGITransport, AsyncClient
 
 from app.config import Settings
@@ -16,6 +17,17 @@ def isolate_settings_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     for field_name in Settings.model_fields:
         monkeypatch.delenv(field_name.upper(), raising=False)
+
+
+@pytest.fixture(autouse=True)
+def reset_logging() -> Iterator[None]:
+    """Undo logging set up by a test, such as the CLI binding logs to a captured stream.
+
+    Without this, a later test that logs would write to a stream the test runner
+    has already closed.
+    """
+    yield
+    structlog.reset_defaults()
 
 
 @pytest.fixture

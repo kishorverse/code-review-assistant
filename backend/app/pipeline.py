@@ -1,8 +1,9 @@
-"""The scan pipeline: ingest, preprocess, then static analysis.
+"""The scan pipeline: ingest, preprocess, static analysis, then optional LLM review.
 
 The same pipeline serves the CLI (batch) and the web API (interactive); only
-the ingest step and the event sink differ. LLM review and verification are
-added as further stages.
+the ingest step and the event sink differ. LLM review runs as three further
+stages (reviewing, verifying, summarizing) when the scan is given models to
+review with and a depth other than static.
 """
 
 import asyncio
@@ -14,13 +15,17 @@ from functools import partial
 from pathlib import Path
 
 from app.events import EventSink, ScanStage, StageEvent
+from app.findings import Finding
 from app.ingest.directory import ingest_directory
 from app.ingest.models import IngestLimits, IngestResult
 from app.ingest.storage import ScanWorkspace
 from app.ingest.upload import ingest_upload
 from app.languages.registry import LanguageRegistry, default_registry
+from app.llm.router import Router
 from app.preprocess.models import ChunkingConfig, PreprocessedFile
 from app.preprocess.source_file import preprocess_file
+from app.review.planner import Depth, ReviewOptions
+from app.review.session import ReviewResult, ReviewSession
 from app.static.base import AnalysisTarget, Analyzer
 from app.static.runner import (
     DEFAULT_TIMEOUT_SECONDS,
@@ -45,13 +50,28 @@ class ScanSettings:
 
 
 @dataclass(frozen=True)
+class ReviewSetup:
+    """The models a scan reviews with, and how."""
+
+    router: Router
+    options: ReviewOptions
+
+
+@dataclass(frozen=True)
 class ScanResult:
-    """Everything a scan produced."""
+    """Everything a scan produced.
+
+    Attributes:
+        findings: The final findings: static findings, updated by LLM review when it ran.
+        review: What LLM review did, when it ran.
+    """
 
     ingest: IngestResult
     files: list[PreprocessedFile]
     static: StaticAnalysisResult
     stage_durations_ms: dict[ScanStage, int]
+    findings: list[Finding]
+    review: ReviewResult | None = None
 
 
 async def run_scan(
@@ -62,8 +82,11 @@ async def run_scan(
     settings: ScanSettings | None = None,
     registry: LanguageRegistry | None = None,
     analyzers: list[Analyzer] | None = None,
+    review: ReviewSetup | None = None,
 ) -> ScanResult:
     """Run every stage of a scan inside an existing workspace.
+
+    Model calls failing never fail the scan: review then keeps the static findings.
 
     Raises:
         IngestError: If the upload or directory is rejected.
@@ -82,8 +105,18 @@ async def run_scan(
             root=ingested.root, files=tuple(ingested.files), scratch=workspace.scratch_dir
         )
         static = await run_static_analysis(target, analyzers, sink, settings.tool_timeout_seconds)
+    reviewed = None
+    if review is not None and review.options.depth is not Depth.STATIC:
+        reviewed = await _review(review, sink, durations, files, static, ingested.root)
     await sink.emit(StageEvent(stage=ScanStage.DONE))
-    return ScanResult(ingest=ingested, files=files, static=static, stage_durations_ms=durations)
+    return ScanResult(
+        ingest=ingested,
+        files=files,
+        static=static,
+        stage_durations_ms=durations,
+        findings=reviewed.findings if reviewed else static.findings,
+        review=reviewed,
+    )
 
 
 def upload_ingest(upload: Path, filename: str, limits: IngestLimits) -> Ingest:
@@ -94,6 +127,24 @@ def upload_ingest(upload: Path, filename: str, limits: IngestLimits) -> Ingest:
 def directory_ingest(project: Path, limits: IngestLimits) -> Ingest:
     """Ingest step for a local project directory."""
     return partial(ingest_directory, project, limits=limits)
+
+
+async def _review(
+    setup: ReviewSetup,
+    sink: EventSink,
+    durations: dict[ScanStage, int],
+    files: list[PreprocessedFile],
+    static: StaticAnalysisResult,
+    root: Path,
+) -> ReviewResult:
+    session = ReviewSession(setup.router, setup.options, sink)
+    async with _stage(ScanStage.REVIEWING, sink, durations):
+        findings = await session.review(files, static, root)
+    async with _stage(ScanStage.VERIFYING, sink, durations):
+        findings = await session.verify(findings)
+    async with _stage(ScanStage.SUMMARIZING, sink, durations):
+        summary = await session.summarize(files, findings)
+    return session.result(findings, summary)
 
 
 async def _preprocess_all(

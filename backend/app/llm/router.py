@@ -16,6 +16,7 @@ from dataclasses import dataclass
 
 from app.errors import (
     AllProvidersUnavailableError,
+    InvalidResponseError,
     ProviderAuthError,
     ProviderConfigError,
     ProviderError,
@@ -47,6 +48,9 @@ _REFUSED = frozenset(
 """Failures where the provider did not process the request, so its tokens were not spent."""
 
 OnCall = Callable[[CallRecord], None]
+
+Validator = Callable[[LLMResponse], None]
+"""Raises :class:`~app.errors.InvalidResponseError` for an answer the caller cannot use."""
 
 
 @dataclass(frozen=True)
@@ -102,24 +106,35 @@ class Router:
         self._cache = cache
         self._max_wait_seconds = max_wait_seconds
 
-    async def complete(self, request: LLMRequest, on_call: OnCall | None = None) -> LLMResponse:
-        """Complete a request with the first provider that can serve it.
+    async def complete(
+        self,
+        request: LLMRequest,
+        on_call: OnCall | None = None,
+        validate: Validator | None = None,
+    ) -> LLMResponse:
+        """Complete a request with the first provider that gives a usable answer.
 
         Args:
             request: The prompt and its routing constraints.
             on_call: Receives a record of every attempt, for progress and provenance.
+            validate: Checks each answer. An answer it rejects counts as a rejected
+                request: the next provider is tried and the answer is not cached.
 
         Raises:
             AllProvidersUnavailableError: If no eligible provider succeeded.
         """
         cached = self._cache.get(request)
-        if cached is not None and self._may_serve(cached.provider, request):
+        if (
+            cached is not None
+            and self._may_serve(cached.provider, request)
+            and _is_usable(cached, validate)
+        ):
             _notify(on_call, _record(request, cached.provider, cached.model, CallStatus.CACHED))
             return cached
 
         attempts: list[CallRecord] = []
         for routed in self._candidates(request):
-            outcome = await self._attempt(routed, request)
+            outcome = await self._attempt(routed, request, validate)
             attempts.append(outcome.record)
             _notify(on_call, outcome.record)
             if outcome.response is not None:
@@ -161,7 +176,9 @@ class Router:
             return False
         return request.allow_external or not external
 
-    async def _attempt(self, routed: RoutedProvider, request: LLMRequest) -> _Outcome:
+    async def _attempt(
+        self, routed: RoutedProvider, request: LLMRequest, validate: Validator | None
+    ) -> _Outcome:
         breaker, limiter = routed.breaker, routed.limiter
         if breaker.state is BreakerState.OPEN:
             return self._skip(routed, request, _refusal(breaker))
@@ -185,18 +202,24 @@ class Router:
             if not breaker.allows():
                 limiter.cancel(reservation)
                 return self._skip(routed, request, _refusal(breaker))
-            return await self._call(routed, request, reservation)
+            return await self._call(routed, request, reservation, validate)
         finally:
             routed.semaphore.release()
 
     async def _call(
-        self, routed: RoutedProvider, request: LLMRequest, reservation: Reservation
+        self,
+        routed: RoutedProvider,
+        request: LLMRequest,
+        reservation: Reservation,
+        validate: Validator | None,
     ) -> _Outcome:
         provider = routed.provider
         started = self._clock.monotonic()
         try:
             async with asyncio.timeout(routed.timeout_seconds):
                 response = await provider.complete(request)
+            if validate is not None:
+                validate(response)
         except (ProviderError, TimeoutError) as error:
             status = self._record_failure(routed.breaker, error)
             if status in _REFUSED:
@@ -263,6 +286,16 @@ async def _acquire(semaphore: asyncio.Semaphore, max_wait_seconds: float | None)
         async with asyncio.timeout(max_wait_seconds):
             await semaphore.acquire()
     except TimeoutError:
+        return False
+    return True
+
+
+def _is_usable(response: LLMResponse, validate: Validator | None) -> bool:
+    if validate is None:
+        return True
+    try:
+        validate(response)
+    except InvalidResponseError:
         return False
     return True
 

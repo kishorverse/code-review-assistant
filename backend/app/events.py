@@ -10,6 +10,7 @@ from typing import Annotated, Literal, Protocol
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
 from app.findings import Finding
+from app.llm.models import CallRecord
 from app.static.base import ToolStatus
 
 
@@ -19,6 +20,9 @@ class ScanStage(StrEnum):
     INGESTING = "ingesting"
     PREPROCESSING = "preprocessing"
     ANALYZING = "analyzing"
+    REVIEWING = "reviewing"
+    VERIFYING = "verifying"
+    SUMMARIZING = "summarizing"
     DONE = "done"
 
 
@@ -45,7 +49,7 @@ class ToolEvent(BaseModel):
 
 
 class FindingEvent(BaseModel):
-    """A finding is ready to show."""
+    """A finding is ready to show. A later event with the same id replaces it."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -53,7 +57,30 @@ class FindingEvent(BaseModel):
     finding: Finding
 
 
-ScanEvent = Annotated[StageEvent | ToolEvent | FindingEvent, Field(discriminator="kind")]
+class ReviewPlanEvent(BaseModel):
+    """What LLM review is about to do."""
+
+    model_config = ConfigDict(frozen=True)
+
+    kind: Literal["review_plan"] = "review_plan"
+    review_chunks: NonNegativeInt
+    style_chunks: NonNegativeInt
+    skipped_chunks: NonNegativeInt
+
+
+class CallEvent(BaseModel):
+    """A model call attempt finished, successfully or not."""
+
+    model_config = ConfigDict(frozen=True)
+
+    kind: Literal["llm_call"] = "llm_call"
+    call: CallRecord
+
+
+ScanEvent = Annotated[
+    StageEvent | ToolEvent | FindingEvent | ReviewPlanEvent | CallEvent,
+    Field(discriminator="kind"),
+]
 
 
 class EventSink(Protocol):

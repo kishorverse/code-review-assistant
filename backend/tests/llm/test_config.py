@@ -35,6 +35,7 @@ def test_shipped_config_is_valid_and_keeps_the_local_model_as_last_resort() -> N
     assert set(config.routing) == set(Task)
     assert all(route[-1] == "local" for route in config.routing.values())
     assert config.providers["hf-large"].limits == config.providers["hf-small"].limits
+    assert config.providers["gemini"].thinking_level == "low"
 
 
 def test_loads_values_and_defaults(tmp_path: Path) -> None:
@@ -61,6 +62,11 @@ def test_loads_values_and_defaults(tmp_path: Path) -> None:
         (lambda data: data["providers"]["local"].update(timeout=5), "Extra inputs"),
         (lambda data: data["limits"]["shared"].update(requests_per_minute=0), "greater than 0"),
         (lambda data: data.update(router={"safety": 1.5}), "less than or equal to 1"),
+        (
+            lambda data: data["providers"]["nvidia"].update(thinking_level="low"),
+            "applies only to gemini",
+        ),
+        (lambda data: data["providers"]["local"].update(thinking_level="extreme"), "Input should"),
     ],
 )
 def test_rejects_invalid_configuration(tmp_path: Path, change: Any, message: str) -> None:

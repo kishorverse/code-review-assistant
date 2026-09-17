@@ -31,6 +31,10 @@ providers:
     limits: gemini
     max_concurrency: 2
     timeout_seconds: 60
+    # Gemini 3 models think before answering, and thinking tokens count toward
+    # the output limit. "low" keeps reviews fast and leaves room for the answer.
+    # Remove this line for Gemini 2.5 models, which do not accept it.
+    thinking_level: low
   nvidia:
     limits: nvidia
     max_concurrency: 4

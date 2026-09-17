@@ -82,6 +82,10 @@ class Finding(BaseModel):
         confidence: 0 to 1; deterministic rules report 1.0.
         status: Review state.
         cwe: CWE identifier such as ``CWE-78``, when known.
+        suggestion: How to fix it, in a sentence; filled in by LLM review.
+        verified_by: Models that independently confirmed an issue another model reported.
+        ai_note: What AI review concluded when it questions the finding, such as why a
+            model dismissed it or disagreed with it.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -103,6 +107,9 @@ class Finding(BaseModel):
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     status: FindingStatus = FindingStatus.OPEN
     cwe: str | None = Field(default=None, pattern=r"^CWE-\d+$")
+    suggestion: str | None = None
+    verified_by: list[str] = Field(default_factory=list)
+    ai_note: str | None = None
 
     @model_validator(mode="after")
     def _end_not_before_start(self) -> Self:
