@@ -95,6 +95,10 @@ class CallRecord(BaseModel):
     """One attempt, for provenance in reports and the routing evaluation.
 
     Records never contain prompts or responses, so they can be logged and stored.
+
+    Attributes:
+        file_path: The file whose code the call was about, so reports can show which
+            provider saw which file; ``None`` for calls about the whole project.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -107,3 +111,4 @@ class CallRecord(BaseModel):
     input_tokens: NonNegativeInt = 0
     output_tokens: NonNegativeInt = 0
     detail: str | None = None
+    file_path: str | None = None

@@ -146,6 +146,7 @@ class ReviewSession:
                 include,
             )
             return await self._limited(
+                chunk.file_path,
                 lambda on_call: review_chunk(
                     self._router,
                     self._prompts,
@@ -153,7 +154,7 @@ class ReviewSession:
                     task,
                     allow_external=self._options.allow_external,
                     on_call=on_call,
-                )
+                ),
             )
 
         reviews = await asyncio.gather(
@@ -186,6 +187,7 @@ class ReviewSession:
 
         async def one(finding: Finding) -> Finding:
             return await self._limited(
+                finding.file_path,
                 lambda on_call: verify_finding(
                     self._router,
                     self._prompts,
@@ -193,7 +195,7 @@ class ReviewSession:
                     self._sources[finding.file_path],
                     allow_external=self._options.allow_external,
                     on_call=on_call,
-                )
+                ),
             )
 
         results = await asyncio.gather(*(one(findings[index]) for index in targets))
@@ -214,6 +216,7 @@ class ReviewSession:
     ) -> ReviewSummary | None:
         """Write the executive summary, if a provider can."""
         return await self._limited(
+            None,
             lambda on_call: summarize(
                 self._router,
                 self._prompts,
@@ -223,7 +226,7 @@ class ReviewSession:
                 min_confidence=self._options.min_confidence,
                 allow_external=self._options.allow_external,
                 on_call=on_call,
-            )
+            ),
         )
 
     def result(self, findings: Sequence[Finding], summary: ReviewSummary | None) -> ReviewResult:
@@ -240,10 +243,16 @@ class ReviewSession:
             prompt_versions={name: self._prompts.version(name) for name in PROMPTS_USED},
         )
 
-    async def _limited(self, run: Callable[[OnCall], Awaitable[ResultT]]) -> ResultT:
+    async def _limited(
+        self, file_path: str | None, run: Callable[[OnCall], Awaitable[ResultT]]
+    ) -> ResultT:
         records: list[CallRecord] = []
+
+        def keep(call: CallRecord) -> None:
+            records.append(call.model_copy(update={"file_path": file_path}))
+
         async with self._semaphore:
-            result = await run(records.append)
+            result = await run(keep)
         self._calls.extend(records)
         for record in records:
             await self._sink.emit(CallEvent(call=record))
