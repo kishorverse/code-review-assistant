@@ -104,6 +104,12 @@ async def test_reviews_verifies_and_summarizes_a_scan(make_project: ProjectFacto
             (Task.SUMMARIZE, "nvidia", CallStatus.OK),
         ]
     )
+    assert {(c.task, c.file_path) for c in result.calls} == {
+        (Task.REVIEW, "app/db.py"),
+        (Task.STYLE, "app/db.py"),
+        (Task.VERIFY, "app/db.py"),
+        (Task.SUMMARIZE, None),
+    }
     assert result.prompt_versions["task_review"] == "1"
     events = sink.events
     assert events[0] == ReviewPlanEvent(review_chunks=1, style_chunks=1, skipped_chunks=0)

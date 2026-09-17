@@ -30,7 +30,7 @@ The web UI, the CLI and the GitHub Action all call the same pipeline, so interac
 | Live progress | Server-Sent Events | The stream is one-way (server → browser). SSE is simpler than WebSockets, works through proxies and reconnects with `Last-Event-ID`. |
 | Data models | Pydantic v2 | One schema for API bodies, analyzer output, LLM I/O and events. |
 | Configuration | pydantic-settings | Typed settings from environment variables and `.env`. API keys never reach the frontend. |
-| Persistence | SQLModel on SQLite | Scans, findings and LLM call logs in a single file, with zero setup. Enough for a single-node prototype. |
+| Persistence | JSON files in each scan's workspace | Every lookup is by scan id, and a scan's results must expire with its uploaded code. Status, event log and report live beside the code and are deleted with it, with no schema to migrate. SQLite was planned and dropped for these reasons. |
 | CLI | Typer + Rich | Batch mode (`margin scan ./project --format sarif`) on the same pipeline. |
 | Logging | structlog (JSON) | Structured, filterable logs with scan and stage context. |
 | Templates | Jinja2 | HTML reports and prompt rendering. |

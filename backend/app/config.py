@@ -8,7 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import SecretStr
+from pydantic import PositiveInt, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_ROOT = Path(__file__).resolve().parent.parent
@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     local_base_url: str = "http://localhost:11434/v1"
 
     opengrep_path: str | None = None
+
+    # Scans submitted through the web API.
+    storage_dir: Path = BACKEND_ROOT / "storage"
+    retention_hours: PositiveInt = 24
+    max_concurrent_scans: PositiveInt = 2
 
 
 @lru_cache
