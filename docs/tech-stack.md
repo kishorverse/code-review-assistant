@@ -24,30 +24,33 @@ The web UI, the CLI and the GitHub Action all call the same pipeline, so interac
 
 | Concern | Choice | Why |
 |---|---|---|
-| Language | Python 3.12 (supports ≥ 3.11) | The analysis ecosystem (Ruff, Bandit, mypy, Radon, tree-sitter bindings) and every LLM SDK are Python-first. |
+| Language | Python 3.12 (supports ≥ 3.11) | The analysis ecosystem (Ruff, Bandit, mypy, Radon, tree-sitter bindings) is Python-first. |
 | Package management | uv | Fast, reproducible installs from a committed lock file. |
 | Web framework | FastAPI + Uvicorn | Async-native, Pydantic validation at the edge, automatic OpenAPI schema (used to generate frontend types). |
 | Live progress | Server-Sent Events | The stream is one-way (server → browser). SSE is simpler than WebSockets, works through proxies and reconnects with `Last-Event-ID`. |
 | Data models | Pydantic v2 | One schema for API bodies, analyzer output, LLM I/O and events. |
 | Configuration | pydantic-settings | Typed settings from environment variables and `.env`. API keys never reach the frontend. |
-| Persistence | SQLModel on SQLite | Scans, findings, LLM call logs and the response cache in a single file, with zero setup. Enough for a single-node prototype. |
+| Persistence | SQLModel on SQLite | Scans, findings and LLM call logs in a single file, with zero setup. Enough for a single-node prototype. |
 | CLI | Typer + Rich | Batch mode (`margin scan ./project --format sarif`) on the same pipeline. |
 | Logging | structlog (JSON) | Structured, filterable logs with scan and stage context. |
 | Templates | Jinja2 | HTML reports and prompt rendering. |
-| HTTP | httpx | Async client with timeouts, mocked in tests with respx. |
+| HTTP | httpx | Async client with timeouts, mocked in tests with respx. Also the client for every LLM provider (see §3). |
 
 ## 3. LLM providers
 
-The brief asks for open-source or publicly available models. Margin uses three hosted providers **together**: each task type goes to the provider best suited to it, and the others serve as fallbacks.
+The brief asks for open-source or publicly available models. Margin uses three hosted providers **together**, plus an optional local model: each task type goes to the provider best suited to it, and the others serve as fallbacks.
 
 | Provider | Access | Models | Primary role | Why |
 |---|---|---|---|---|
 | NVIDIA NIM | OpenAI-compatible API (`integrate.api.nvidia.com`) | An open-weight instruct / coder model from the NVIDIA API catalog | Bulk chunk review (bugs, security, performance) | The most generous free rate limit, so it carries the highest-volume task. |
 | Hugging Face Inference Providers | OpenAI-compatible router (`router.huggingface.co`) | Meta Llama 3.3 70B Instruct, Llama 3.1 8B Instruct | Style review (8B); fallback review (70B) | Open-weight Llama models. The small model is cheap enough for high-volume style checks. |
-| Google Gemini | `google-genai` SDK | Gemini Flash (free tier) | Cross-model verification, project summary | Long context and strong code reasoning. Publicly available, but a closed model, so it is used behind the consent gate. |
-| Mock | In-process | Canned JSON fixtures | Tests and CI | Deterministic, free and needs no keys. |
+| Google Gemini | REST API (`generateContent`) | Gemini Flash (free tier) | Cross-model verification, project summary | Long context and strong code reasoning. Publicly available, but a closed model, so it is used behind the consent gate. |
+| Local model (optional) | OpenAI-compatible server on this machine, Ollama by default | Any open-weight model you have pulled | Private mode; last fallback for every task | Code never leaves the machine, so it needs no consent. Smaller models review less thoroughly. |
+| Mock | In-process | Canned JSON answers | Tests, CI and offline demos | Deterministic, free and needs no keys. |
 
-Model ids are not hard-coded. `scripts/list_models.py` lists the models each key can access, and the chosen ids go in `.env`.
+Model ids are not hard-coded. `scripts/list_models.py` lists the models each key can access and the models on a running local server; the chosen ids go in `.env`.
+
+**Clients.** Providers are called directly with `httpx` instead of vendor SDKs (`google-genai`, `openai`). One client means uniform timeouts, no SDK retries competing with the router, exact error mapping (a Gemini daily quota and a per-minute limit are both HTTP 429 but need different handling), fewer dependencies, and tests against recorded HTTP responses.
 
 ### Privacy
 
@@ -67,12 +70,12 @@ A custom asyncio router, about 300 lines, sits between the pipeline and the prov
 | Concurrency semaphores | Prevent bursts that trigger rate limiting. |
 | Circuit breakers | Stop calling a provider after 429s, quota errors or repeated failures, and probe again later. |
 | Fallbacks | Route to the next provider when one is unavailable; `verify` always excludes the provider that produced the finding. |
-| Response cache | Re-scanning unchanged code costs no API calls. |
+| Response cache | Re-scanning unchanged code costs no API calls (in memory, least recently used evicted). |
 | Budget planner | Estimates calls before a scan and degrades gracefully when quotas are tight. |
 
 **Alternative considered:** LiteLLM provides similar routing out of the box. A custom router was chosen for three reasons: it stays small, it can be fully unit-tested with fake providers and a fake clock, and it avoids a large dependency whose PyPI releases were compromised in a 2026 supply-chain incident.
 
-Provider limits live in `backend/config/providers.yaml`, so they can be updated without code changes.
+Provider limits and task routing live in `backend/config/providers.yaml`, so they can be updated without code changes. [LLM routing](routing.md) documents the behaviour in detail.
 
 ## 5. Static analysis toolchain
 

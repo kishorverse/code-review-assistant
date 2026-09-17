@@ -9,7 +9,7 @@ Margin reviews a single source file or a zipped project in two passes.
 
 A router that knows each provider's rate limits sends every task to the best-suited model and falls back cleanly when a quota runs out. A verifier checks evidence and runs a second model on serious findings, so false positives are filtered out before you see them.
 
-> **Status:** in active development. Safe upload handling, structure-aware chunking and the static analysis engine with its CLI work today; LLM review, the web API and the web UI are being added module by module.
+> **Status:** in active development. Safe upload handling, structure-aware chunking, the static analysis engine with its CLI, and the rate-limit-aware LLM router work today; LLM review, the web API and the web UI are being added module by module.
 
 ## Planned features
 
@@ -79,14 +79,16 @@ npm run dev
 
 Open http://localhost:5173. Requests to `/api` are proxied to the backend.
 
-### LLM provider keys
+### LLM providers
 
-Margin uses Google Gemini, Hugging Face Inference Providers and NVIDIA NIM. Add the keys to `backend/.env` (links to create each key are in `.env.example`), then list the model ids your keys can use:
+Margin uses Google Gemini, Hugging Face Inference Providers and NVIDIA NIM, and optionally a local model served by [Ollama](https://ollama.com). Add the keys to `backend/.env` (links to create each key are in `.env.example`), then list the model ids your keys and local server can use:
 
 ```bash
 cd backend
 uv run python scripts/list_models.py
 ```
+
+Put the chosen ids in `.env` (`GEMINI_MODEL`, `HF_MODEL_LARGE`, `HF_MODEL_SMALL`, `NVIDIA_MODEL`, `LOCAL_MODEL`). A provider without its key or model id is simply not used. No keys at all? `LLM_MODE=mock` runs everything offline with canned answers. Rate limits and task routing are in `backend/config/providers.yaml`; see [LLM routing](docs/routing.md).
 
 ### Scanning from the command line
 
@@ -127,6 +129,7 @@ uv run pre-commit install
 - [Coding rules](docs/coding-rules.md)
 - [Tech stack](docs/tech-stack.md)
 - [Static analysis engine](docs/static-analysis.md): analyzers, finding normalization, and how untrusted code is analyzed safely
+- [LLM routing](docs/routing.md): providers, task routing, rate limits, circuit breakers, caching and the consent gate
 
 ## License
 
