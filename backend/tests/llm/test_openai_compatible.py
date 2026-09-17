@@ -8,6 +8,7 @@ from pydantic import SecretStr
 
 from app.errors import (
     ProviderAuthError,
+    ProviderConfigError,
     ProviderRequestError,
     ProviderUnavailableError,
     QuotaExhaustedError,
@@ -23,10 +24,12 @@ URL = f"{BASE_URL}/chat/completions"
 REQUEST = LLMRequest(task=Task.REVIEW, system="You review code.", user="1 | x = 1")
 
 
-def completion(content: str = '{"findings": []}') -> dict[str, object]:
+def completion(content: str = '{"findings": []}', finish: str = "stop") -> dict[str, object]:
     return {
         "model": "meta/llama-3.3-70b-instruct",
-        "choices": [{"message": {"role": "assistant", "content": content}}],
+        "choices": [
+            {"message": {"role": "assistant", "content": content}, "finish_reason": finish}
+        ],
         "usage": {"prompt_tokens": 42, "completion_tokens": 7},
     }
 
@@ -99,12 +102,20 @@ async def test_local_provider_sends_no_authorization_and_can_skip_json_mode(
         (httpx.Response(403), ProviderAuthError),
         (httpx.Response(503, text="overloaded"), ProviderUnavailableError),
         (httpx.Response(408), ProviderUnavailableError),
-        (httpx.Response(404, json={"error": {"message": "model not found"}}), ProviderRequestError),
-        (httpx.Response(200, text="not json"), ProviderRequestError),
-        (httpx.Response(200, json={"choices": []}), ProviderRequestError),
+        (httpx.Response(404, json={"error": {"message": "model not found"}}), ProviderConfigError),
+        (
+            httpx.Response(400, json={"error": {"message": "context too long"}}),
+            ProviderRequestError,
+        ),
         (httpx.Response(200, json=completion(content="   ")), ProviderRequestError),
-        (httpx.Response(200, json={"choices": ["unexpected"]}), ProviderRequestError),
-        (httpx.Response(200, json=[completion()]), ProviderRequestError),
+        (
+            httpx.Response(200, json=completion(content='{"find', finish="length")),
+            ProviderRequestError,
+        ),
+        (httpx.Response(200, text="<html>proxy error</html>"), ProviderUnavailableError),
+        (httpx.Response(200, json={"choices": []}), ProviderUnavailableError),
+        (httpx.Response(200, json={"choices": ["unexpected"]}), ProviderUnavailableError),
+        (httpx.Response(200, json=[completion()]), ProviderUnavailableError),
     ],
 )
 async def test_maps_failures_to_provider_errors(
@@ -154,6 +165,31 @@ async def test_network_failures_are_unavailable(
 
     with pytest.raises(ProviderUnavailableError):
         await provider(client, clock).complete(REQUEST)
+
+
+@pytest.mark.parametrize(
+    ("base_url", "api_key"),
+    [
+        ("http://localhost:abc/v1", "nvapi-test"),
+        ("localhost:11434/v1", "nvapi-test"),
+        (BASE_URL, "nvapi-t\u00e9st"),
+    ],
+)
+async def test_unsendable_configuration_is_a_config_error(
+    client: httpx.AsyncClient, clock: FakeClock, base_url: str, api_key: str
+) -> None:
+    misconfigured = OpenAICompatibleProvider(
+        name="local",
+        model="m",
+        base_url=base_url,
+        api_key=SecretStr(api_key),
+        external=False,
+        client=client,
+        clock=clock,
+    )
+
+    with pytest.raises(ProviderConfigError):
+        await misconfigured.complete(REQUEST)
 
 
 def test_retry_after_accepts_seconds_and_http_dates(clock: FakeClock) -> None:

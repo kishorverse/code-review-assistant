@@ -96,12 +96,20 @@ class ProviderAuthError(ProviderError):
     """The API key was rejected; the provider stays unusable until configuration changes."""
 
 
+class ProviderConfigError(ProviderError):
+    """The model id or endpoint URL is wrong; the provider stays unusable until it is fixed."""
+
+
 class ProviderUnavailableError(ProviderError):
-    """A transient failure: a timeout, a connection error or a server error."""
+    """A provider-wide failure: a timeout, a connection or server error, or a garbled response."""
 
 
 class ProviderRequestError(ProviderError):
-    """The provider rejected this particular request or returned an unusable response."""
+    """The provider is working but could not answer this particular request.
+
+    Examples are a request it rejects as invalid, a blocked prompt, or an answer
+    cut off at the output token limit. Other requests may still succeed.
+    """
 
 
 class AllProvidersUnavailableError(MarginError):

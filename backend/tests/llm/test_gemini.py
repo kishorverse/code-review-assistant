@@ -9,6 +9,7 @@ from pydantic import SecretStr
 
 from app.errors import (
     ProviderAuthError,
+    ProviderConfigError,
     ProviderRequestError,
     ProviderUnavailableError,
     QuotaExhaustedError,
@@ -130,7 +131,28 @@ async def test_daily_quota_is_exhausted_until_midnight_pacific(
 @pytest.mark.parametrize(
     ("response", "error"),
     [
-        (httpx.Response(403, json={"error": {"message": "API key not valid"}}), ProviderAuthError),
+        (
+            httpx.Response(
+                400,
+                json={
+                    "error": {
+                        "code": 400,
+                        "message": "API key not valid. Please pass a valid API key.",
+                        "status": "INVALID_ARGUMENT",
+                        "details": [
+                            {
+                                "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+                                "reason": "API_KEY_INVALID",
+                                "domain": "googleapis.com",
+                            }
+                        ],
+                    }
+                },
+            ),
+            ProviderAuthError,
+        ),
+        (httpx.Response(403, json={"error": {"message": "permission denied"}}), ProviderAuthError),
+        (httpx.Response(404, json={"error": {"message": "model not found"}}), ProviderConfigError),
         (httpx.Response(500), ProviderUnavailableError),
         (httpx.Response(400, json={"error": {"message": "bad request"}}), ProviderRequestError),
         (
@@ -141,10 +163,21 @@ async def test_daily_quota_is_exhausted_until_midnight_pacific(
             httpx.Response(200, json={"candidates": [{"finishReason": "MAX_TOKENS"}]}),
             ProviderRequestError,
         ),
-        (httpx.Response(200, json={"candidates": ["unexpected"]}), ProviderRequestError),
+        (
+            httpx.Response(
+                200,
+                json={
+                    "candidates": [
+                        {"content": {"parts": [{"text": '{"verd'}]}, "finishReason": "MAX_TOKENS"}
+                    ]
+                },
+            ),
+            ProviderRequestError,
+        ),
+        (httpx.Response(200, json={"candidates": ["unexpected"]}), ProviderUnavailableError),
         (
             httpx.Response(200, json={"candidates": [{"content": {"parts": [{"text": 7}]}}]}),
-            ProviderRequestError,
+            ProviderUnavailableError,
         ),
         (httpx.Response(429, text="Too Many Requests"), RateLimitedError),
         (

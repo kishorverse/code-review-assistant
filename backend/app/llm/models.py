@@ -85,6 +85,7 @@ class CallStatus(StrEnum):
     RATE_LIMITED = "rate_limited"
     QUOTA_EXHAUSTED = "quota_exhausted"
     AUTH_FAILED = "auth_failed"
+    MISCONFIGURED = "misconfigured"
     UNAVAILABLE = "unavailable"
     REJECTED = "rejected"
     SKIPPED = "skipped"

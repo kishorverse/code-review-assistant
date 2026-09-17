@@ -14,7 +14,14 @@ from zoneinfo import ZoneInfo
 import httpx
 from pydantic import SecretStr
 
-from app.errors import ProviderError, ProviderRequestError, QuotaExhaustedError, RateLimitedError
+from app.errors import (
+    ProviderAuthError,
+    ProviderError,
+    ProviderRequestError,
+    ProviderUnavailableError,
+    QuotaExhaustedError,
+    RateLimitedError,
+)
 from app.llm.clock import Clock
 from app.llm.models import LLMRequest, LLMResponse
 from app.llm.providers.base import (
@@ -92,6 +99,9 @@ class GeminiProvider:
         now = self._clock.now()
         if response.status_code == 429:
             raise rate_limit_error(response, now)
+        if response.status_code == 400 and has_error_reason(response, "API_KEY_INVALID"):
+            # Gemini reports an invalid or expired key as a 400, not a 401.
+            raise ProviderAuthError(NAME, f"API key rejected: {error_detail(response)}")
         raise_for_status(NAME, response, now)
         return self._parse(json_object(NAME, response), latency_ms)
 
@@ -99,7 +109,7 @@ class GeminiProvider:
         try:
             text = response_text(payload)
         except (AttributeError, IndexError, KeyError, TypeError) as error:
-            raise ProviderRequestError(NAME, "response had an unexpected shape") from error
+            raise ProviderUnavailableError(NAME, "response had an unexpected shape") from error
         usage = payload.get("usageMetadata")
         return LLMResponse(
             text=text,
@@ -117,13 +127,17 @@ def response_text(payload: dict[str, Any]) -> str:
     """The first candidate's answer, leaving out thought summaries.
 
     Raises:
-        ProviderRequestError: If the prompt was blocked or the answer is empty.
+        ProviderRequestError: If the prompt was blocked, or the answer is empty or
+            was cut off at the output token limit.
     """
     candidates = payload.get("candidates") or []
     if not candidates:
         reason = (payload.get("promptFeedback") or {}).get("blockReason", "unknown")
         raise ProviderRequestError(NAME, f"no candidates returned (block reason: {reason})")
     candidate = candidates[0]
+    if candidate.get("finishReason") == "MAX_TOKENS":
+        # Thinking tokens count towards the limit, so this can happen with little visible text.
+        raise ProviderRequestError(NAME, "response was cut off at the output token limit")
     parts = (candidate.get("content") or {}).get("parts") or []
     text = "".join(part.get("text", "") for part in parts if not part.get("thought"))
     if not text.strip():
@@ -154,6 +168,14 @@ def error_details(response: httpx.Response) -> list[dict[str, Any]]:
         [detail for detail in details if isinstance(detail, dict)]
         if isinstance(details, list)
         else []
+    )
+
+
+def has_error_reason(response: httpx.Response, reason: str) -> bool:
+    """Whether an error body carries a ``google.rpc.ErrorInfo`` with this reason."""
+    return any(
+        str(detail.get("@type", "")).endswith("ErrorInfo") and detail.get("reason") == reason
+        for detail in error_details(response)
     )
 
 

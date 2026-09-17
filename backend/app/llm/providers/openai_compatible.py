@@ -8,7 +8,7 @@ key and whether data leaves the machine differ.
 import httpx
 from pydantic import SecretStr
 
-from app.errors import ProviderRequestError
+from app.errors import ProviderRequestError, ProviderUnavailableError
 from app.llm.clock import Clock
 from app.llm.models import LLMRequest, LLMResponse
 from app.llm.providers.base import json_object, post_json, raise_for_status, usage_count
@@ -85,9 +85,15 @@ class OpenAICompatibleProvider:
         payload = json_object(self._name, response)
 
         try:
-            content = payload["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, TypeError) as error:
-            raise ProviderRequestError(self._name, "response had no message content") from error
+            choice = payload["choices"][0]
+            content = choice["message"]["content"]
+            finish_reason = choice.get("finish_reason")
+        except (AttributeError, KeyError, IndexError, TypeError) as error:
+            raise ProviderUnavailableError(
+                self._name, "response had an unexpected shape"
+            ) from error
+        if finish_reason == "length":
+            raise ProviderRequestError(self._name, "response was cut off at the output token limit")
         if not isinstance(content, str) or not content.strip():
             raise ProviderRequestError(self._name, "response message was empty")
 

@@ -14,6 +14,7 @@ import httpx
 
 from app.errors import (
     ProviderAuthError,
+    ProviderConfigError,
     ProviderRequestError,
     ProviderUnavailableError,
     QuotaExhaustedError,
@@ -65,12 +66,19 @@ async def post_json(
 
     Raises:
         ProviderUnavailableError: On timeouts and connection failures.
+        ProviderConfigError: If the URL or a header value cannot be sent at all.
     """
     started = time.perf_counter()
     try:
         response = await client.post(url, headers=headers, json=body, timeout=timeout_seconds)
     except httpx.TimeoutException as error:
         raise ProviderUnavailableError(provider, "request timed out") from error
+    except (httpx.InvalidURL, httpx.UnsupportedProtocol) as error:
+        raise ProviderConfigError(provider, f"invalid base URL ({error})") from error
+    except UnicodeEncodeError as error:
+        raise ProviderConfigError(
+            provider, "the API key contains characters that cannot be sent"
+        ) from error
     except httpx.HTTPError as error:
         raise ProviderUnavailableError(
             provider, f"connection failed ({type(error).__name__})"
@@ -91,6 +99,8 @@ def raise_for_status(provider: str, response: httpx.Response, now: datetime) -> 
         raise QuotaExhaustedError(provider, f"credits exhausted: {detail}")
     if status in (401, 403):
         raise ProviderAuthError(provider, f"authentication failed (HTTP {status}): {detail}")
+    if status == 404:
+        raise ProviderConfigError(provider, f"model or endpoint not found: {detail}")
     if status == 408 or status >= 500:
         raise ProviderUnavailableError(provider, f"HTTP {status}: {detail}")
     raise ProviderRequestError(provider, f"HTTP {status}: {detail}")
@@ -136,12 +146,13 @@ def json_object(provider: str, response: httpx.Response) -> dict[str, Any]:
     """Decode a successful response body that must be a JSON object.
 
     Raises:
-        ProviderRequestError: If the body is not a JSON object.
+        ProviderUnavailableError: If the body is not a JSON object, which means
+            something other than the model API answered.
     """
     try:
         payload = response.json()
     except ValueError as error:
-        raise ProviderRequestError(provider, "response was not JSON") from error
+        raise ProviderUnavailableError(provider, "response was not JSON") from error
     if not isinstance(payload, dict):
-        raise ProviderRequestError(provider, "response was not a JSON object")
+        raise ProviderUnavailableError(provider, "response was not a JSON object")
     return payload
