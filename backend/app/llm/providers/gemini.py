@@ -49,8 +49,10 @@ class GeminiProvider:
         client: httpx.AsyncClient,
         clock: Clock,
         timeout_seconds: float = 60.0,
+        thinking_level: str | None = None,
     ) -> None:
         self._model = model
+        self._thinking_level = thinking_level
         self._url = f"{base_url.rstrip('/')}/models/{model}:generateContent"
         self._api_key = api_key
         self._client = client
@@ -80,6 +82,8 @@ class GeminiProvider:
         }
         if request.json_output:
             generation["responseMimeType"] = "application/json"
+        if self._thinking_level is not None:
+            generation["thinkingConfig"] = {"thinkingLevel": self._thinking_level}
         body = {
             "systemInstruction": {"parts": [{"text": request.system}]},
             "contents": [{"role": "user", "parts": [{"text": request.user}]}],

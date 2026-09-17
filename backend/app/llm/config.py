@@ -6,7 +6,7 @@ which each task tries providers, so they can change without code changes.
 """
 
 from pathlib import Path
-from typing import Self
+from typing import Literal, Self
 
 import yaml
 from pydantic import (
@@ -50,13 +50,22 @@ class LimitsConfig(_Strict):
         )
 
 
+ThinkingLevel = Literal["minimal", "low", "medium", "high"]
+
+
 class ProviderTuning(_Strict):
-    """How one provider is called."""
+    """How one provider is called.
+
+    Attributes:
+        thinking_level: For Gemini 3 models, how much the model thinks before
+            answering. Thinking tokens count toward the output limit.
+    """
 
     limits: str
     max_concurrency: PositiveInt = 2
     timeout_seconds: PositiveFloat = 60.0
     json_mode: bool = True
+    thinking_level: ThinkingLevel | None = None
 
 
 class RouterTuning(_Strict):
@@ -93,6 +102,8 @@ class ProvidersConfig(_Strict):
         for name, provider in self.providers.items():
             if provider.limits not in self.limits:
                 raise ValueError(f"provider {name!r} uses undefined limits {provider.limits!r}")
+            if provider.thinking_level is not None and name != "gemini":
+                raise ValueError(f"thinking_level applies only to gemini, not {name!r}")
         missing = [task.value for task in Task if task not in self.routing]
         if missing:
             raise ValueError(f"routing has no entry for: {', '.join(missing)}")
