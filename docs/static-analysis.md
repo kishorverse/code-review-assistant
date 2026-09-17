@@ -33,7 +33,10 @@ A tool that is not installed is reported as *skipped*. Opengrep is a standalone 
    - Bandit B105 and detect-secrets
 
    Findings from the same tool are never merged with each other.
-4. **Attach evidence.** Up to five offending lines are copied into the finding (`evidence.py`). Findings about secrets carry a redaction marker instead, and their messages never quote the secret.
+4. **Attach evidence.** Up to five offending lines are copied into the finding (`evidence.py`).
+   - Findings about secrets carry a redaction marker, and their messages never quote the secret.
+   - Any line holding a detected secret is masked in every other finding's evidence too. That includes copies of the same value on lines detect-secrets did not report, matched by the SHA-1 digest it outputs (`app/redaction.py`).
+   - Only line numbers and digests are kept, never the values. The same index lets later stages mask code before it is sent to an LLM.
 5. **Order and emit.** Findings are sorted most severe first and sent as events to the CLI or the web UI.
 
 File metrics from Radon (size, maintainability index) and Lizard (per-function complexity, length and parameters) are merged per file for the quality score.
@@ -47,11 +50,13 @@ Uploaded code is only ever read. Analyzers, however, are general-purpose tools t
 | mypy plugins run arbitrary code | A `mypy.ini` in the upload loaded a plugin that wrote a file during the scan | Run from an empty scratch directory **and** pass `--config-file=`; two independent tests |
 | Python module shadowing | An uploaded `detect_secrets.py` ran instead of the real module, because `python -m` puts the working directory first on `sys.path` | Every Python tool runs as `python -I` (isolated mode) |
 | Ruff configuration hides findings | An uploaded `ruff.toml` with `extend-exclude`, `include` or `per-file-ignores` removed every finding | `ruff check --isolated` |
+| Ignore files hide code | An uploaded `.ignore` (Ruff) or `.gitignore` (Ruff inside a repository, Lizard always) hid every file while the tool reported success | `--no-respect-gitignore` for Ruff, `--no-gitignore` for Lizard |
 | Bandit configuration disables checks | An uploaded `.bandit` with `tests = B101` made Bandit produce no report at all | `--ini` points at Margin's own empty file |
 | Suppression comments hide issues | `# nosec` hid a `shell=True` finding | `bandit --ignore-nosec` |
 | Opengrep ignore files hide targets | An uploaded `.semgrepignore` hid every file, even with `--no-git-ignore` | Opengrep runs from the scratch directory |
 | Radon and Vulture configuration | `setup.cfg`, `radon.cfg` and `[tool.vulture]` are read from the working directory | Both run from the scratch directory |
-| Secrets leaking into reports | Bandit quotes hardcoded passwords in its message | Messages rewritten, evidence redacted |
+| Secrets leaking into reports | Bandit quotes hardcoded passwords in its message; a Ruff line-too-long finding on a line with an API key copied the key into its evidence | Messages rewritten; evidence masked by line and by value digest |
+| Allowlist comments hide secrets | `# pragma: allowlist secret` in uploaded code hid a key from detect-secrets, and so from redaction | detect-secrets runs with its allowlist filter disabled |
 | Backend credentials reaching tools | — | Tools get a minimal environment built from scratch; no API keys are passed on |
 
 Other properties of every tool process:
@@ -98,4 +103,5 @@ On the seeded sample in `tests/static/test_opengrep.py`, every rule fires on its
 - Projects are analyzed without their dependencies installed. mypy therefore ignores missing imports, and some type errors across package boundaries go unnoticed.
 - mypy skips following imports, so type information from other modules in the project is not used.
 - Keyword and entropy detectors in detect-secrets also match test fixtures; their findings get lower confidence.
+- Masking copies of a secret relies on the value appearing as a whole word or quoted string. A secret split across string concatenations is not recognized as a copy.
 - Language support beyond Python is basic: complexity metrics, secrets and a few security rules.
