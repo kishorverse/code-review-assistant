@@ -80,3 +80,71 @@ def test_open_until_a_quota_reset_time(clock: FakeClock) -> None:
     assert breaker.status().reason == "daily quota used"
     clock.advance(5 * 3600 - 1)
     assert not breaker.allows()
+
+
+def test_a_shorter_pause_never_replaces_a_longer_one(clock: FakeClock) -> None:
+    breaker = CircuitBreaker(clock, failure_threshold=1)
+    breaker.open_until(clock.now() + timedelta(hours=16), "quota used up")
+
+    breaker.record_rate_limit(retry_after=5)
+    breaker.record_failure("HTTP 503")
+
+    assert breaker.status().reopens_in_seconds == pytest.approx(16 * 3600)
+    assert breaker.status().reason == "quota used up"
+
+
+def test_a_failed_probe_still_reopens_after_a_long_pause_ends(clock: FakeClock) -> None:
+    breaker = CircuitBreaker(clock, cooldown_seconds=30)
+    breaker.open_for(3600, "API key rejected")
+    clock.advance(3600)
+    assert breaker.allows()
+
+    breaker.record_rate_limit(retry_after=5)
+
+    assert breaker.state is BreakerState.OPEN
+    assert breaker.status().reopens_in_seconds == pytest.approx(5)
+
+
+def test_a_late_success_does_not_end_a_pause(clock: FakeClock) -> None:
+    breaker = CircuitBreaker(clock)
+    breaker.open_until(clock.now() + timedelta(hours=10), "quota used up")
+
+    breaker.record_success()
+
+    assert breaker.state is BreakerState.OPEN
+    assert breaker.status().reason == "quota used up"
+
+
+def test_probe_slot_lasts_for_the_probe_timeout(clock: FakeClock) -> None:
+    breaker = CircuitBreaker(
+        clock, failure_threshold=1, cooldown_seconds=10, probe_timeout_seconds=300
+    )
+    breaker.record_failure("timeout")
+    clock.advance(10)
+    assert breaker.allows()
+
+    clock.advance(299)
+    assert not breaker.allows()
+    clock.advance(1)
+    assert breaker.allows()
+
+
+def test_a_rejected_probe_frees_the_probe_slot(clock: FakeClock) -> None:
+    breaker = CircuitBreaker(clock, failure_threshold=1, cooldown_seconds=10)
+    breaker.record_failure("timeout")
+    clock.advance(10)
+    assert breaker.allows()
+
+    breaker.record_rejection()
+
+    assert breaker.state is BreakerState.HALF_OPEN
+    assert breaker.allows()
+
+
+def test_backoff_survives_a_very_long_run_of_rate_limits(clock: FakeClock) -> None:
+    breaker = CircuitBreaker(clock, max_backoff_seconds=60)
+
+    for _ in range(2000):
+        breaker.record_rate_limit(retry_after=None)
+
+    assert breaker.status().reopens_in_seconds == pytest.approx(60)
