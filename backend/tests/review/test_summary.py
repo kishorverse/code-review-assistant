@@ -1,9 +1,11 @@
+import hashlib
 import json
 
 from app.findings import Category, FindingStatus, Severity
 from app.llm.models import LLMRequest
 from app.llm.prompts import default_prompts
 from app.llm.providers.mock import MockProvider
+from app.redaction import SecretIndex
 from app.review.summary import MAX_LISTED_FINDINGS, finding_lines, project_facts, summarize
 from tests.review.conftest import ProjectFactory, make_finding, mock_router
 
@@ -31,8 +33,10 @@ def test_facts_count_only_reported_findings(make_project: ProjectFactory) -> Non
 
 
 def test_finding_lines_are_most_severe_first_and_capped() -> None:
-    lines = finding_lines(FINDINGS, min_confidence=0.6).splitlines()
-    many = finding_lines([make_finding(start_line=n + 1) for n in range(40)], 0.6).splitlines()
+    lines = finding_lines(FINDINGS, 0.6, SecretIndex()).splitlines()
+    many = finding_lines(
+        [make_finding(start_line=n + 1) for n in range(40)], 0.6, SecretIndex()
+    ).splitlines()
 
     assert lines == [
         "- [critical] bug, app/api.py:9: SQL built with string concatenation (found by bandit)",
@@ -41,7 +45,7 @@ def test_finding_lines_are_most_severe_first_and_capped() -> None:
     ]
     assert len(many) == MAX_LISTED_FINDINGS + 1
     assert many[-1] == "- and 10 more"
-    assert finding_lines([], 0.6) == "none"
+    assert finding_lines([], 0.6, SecretIndex()) == "none"
 
 
 async def test_summarize_sends_facts_without_code(make_project: ProjectFactory) -> None:
@@ -57,6 +61,7 @@ async def test_summarize_sends_facts_without_code(make_project: ProjectFactory) 
         default_prompts(),
         files,
         FINDINGS,
+        SecretIndex(),
         min_confidence=0.6,
         allow_external=False,
     )
@@ -75,6 +80,7 @@ async def test_no_summary_when_no_provider_answers(make_project: ProjectFactory)
         default_prompts(),
         files,
         FINDINGS,
+        SecretIndex(),
         min_confidence=0.6,
         allow_external=False,
     )
@@ -90,8 +96,26 @@ async def test_a_prose_summary_falls_back_to_the_next_model(make_project: Projec
     )
 
     summary = await summarize(
-        router, default_prompts(), files, FINDINGS, min_confidence=0.6, allow_external=True
+        router,
+        default_prompts(),
+        files,
+        FINDINGS,
+        SecretIndex(),
+        min_confidence=0.6,
+        allow_external=True,
     )
 
     assert summary is not None
     assert summary.headline == "Two issues."
+
+
+def test_finding_titles_are_masked_for_detected_secrets() -> None:
+    value = "placeholder-" + "credential"
+    index = SecretIndex()
+    index.add_hashes([hashlib.sha1(value.encode(), usedforsecurity=False).hexdigest()])
+    quoting = make_finding(title=f"Magic value {value} used in comparison")
+
+    lines = finding_lines([quoting], 0.6, index)
+
+    assert value not in lines
+    assert "Magic value <REDACTED_SECRET> used in comparison" in lines

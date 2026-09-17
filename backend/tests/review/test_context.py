@@ -132,3 +132,25 @@ def test_describe_project_counts_files_by_language(make_project: ProjectFactory)
 
     assert describe_project(files) == "3 reviewable files (python 2, javascript 1)"
     assert describe_project([]) == "no reviewable files"
+
+
+def test_tool_messages_are_masked_like_the_code(make_project: ProjectFactory) -> None:
+    root, [file] = make_project({"app/settings.py": f'TOKEN: str = "{TOKEN}"\n'})
+    index = SecretIndex()
+    index.add_hashes([hashlib.sha1(TOKEN.encode(), usedforsecurity=False).hexdigest()])
+    quoting = make_finding(
+        file_path="app/settings.py",
+        start_line=1,
+        category=Category.TYPING,
+        rule_id="assignment",
+        sources=["mypy"],
+        message=f"Incompatible types (expression has type \"Literal['{TOKEN}']\")",
+    )
+
+    context = build_context(
+        file.chunks[0], load_source(root, file, index), [quoting], None, "", for_review
+    )
+
+    assert TOKEN not in context.prompt_values["static_findings"]
+    assert TOKEN not in context.prompt_values["code"]
+    assert "<REDACTED_SECRET_1>" in context.prompt_values["static_findings"]

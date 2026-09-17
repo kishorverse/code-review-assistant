@@ -1,7 +1,13 @@
 import hashlib
 
 from app.findings import REDACTED_EVIDENCE
-from app.redaction import SecretIndex, SecretMasker, candidate_values, redact_lines
+from app.redaction import (
+    SecretIndex,
+    SecretMasker,
+    candidate_values,
+    mask_secret_values,
+    redact_lines,
+)
 
 # Assembled at runtime so this repository never contains a secret-shaped literal.
 KEY = "AKIA" + "IOSFODNN7" + "EXAMPLE"
@@ -120,3 +126,21 @@ def test_an_unterminated_key_block_does_not_hide_the_rest_of_the_file() -> None:
 
     assert masked[-1] == "def important(): pass"
     assert masked[1] == "<REDACTED_SECRET_1>"
+
+
+def test_masker_masks_secret_values_in_free_text_with_the_files_placeholders() -> None:
+    masker = SecretMasker("app/settings.py", index_with_key())
+    masker.mask_lines([f'AWS_KEY = "{KEY}"'])
+
+    assert (
+        masker.mask_text(f"Literal['{KEY}'] is not str")
+        == "Literal['<REDACTED_SECRET_1>'] is not str"
+    )
+
+
+def test_mask_secret_values_uses_a_generic_placeholder() -> None:
+    assert (
+        mask_secret_values(f"Unused value {KEY}", index_with_key())
+        == "Unused value <REDACTED_SECRET>"
+    )
+    assert mask_secret_values("Nothing secret", index_with_key()) == "Nothing secret"

@@ -51,6 +51,8 @@ Pure layout rules (Ruff `E1`–`E5`, `W`, `I`, `Q`, `COM`) are never sent; they 
 
 The same value keeps one number within a file. The model can still see that two lines share a credential, and still report the hardcoded secret.
 
+Some analyzers quote literal values from the code in their messages (mypy's `Literal[...]` types, for example). Static finding messages in a prompt and finding titles sent for the summary are masked the same way.
+
 ## Prompts
 
 Prompts are versioned Markdown files in `backend/app/llm/prompts/`, rendered with Jinja2 (HTML escaping off, missing values are errors). The reviewer's system prompt requires the model to:

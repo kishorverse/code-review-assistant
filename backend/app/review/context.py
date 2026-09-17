@@ -4,7 +4,8 @@ A context bundles the chunk's code, the static findings inside it (each with a
 short id such as ``S1`` that the model's judgements refer back to), the
 metrics of its functions and the regions that failed to parse. Code always
 comes from a :class:`SourceText`, whose lines are masked for secrets, never
-from the chunk's own unmasked rendering.
+from the chunk's own unmasked rendering. Tool messages are masked too, because
+some analyzers quote literal values from the code.
 """
 
 import json
@@ -35,13 +36,23 @@ STYLE_GUIDES = {
 DEFAULT_STYLE_GUIDE = "the language's widely used conventions"
 
 
+def _unchanged(text: str) -> str:
+    return text
+
+
 @dataclass(frozen=True)
 class SourceText:
-    """One file's lines with secrets masked, exactly as a model may see them."""
+    """One file's lines with secrets masked, exactly as a model may see them.
+
+    Attributes:
+        mask_text: Masks detected secret values in other text about the file,
+            with the same placeholders as its lines.
+    """
 
     path: str
     language: str
     lines: list[str]
+    mask_text: Callable[[str], str] = _unchanged
 
     def render(self, blocks: Sequence[LineRange]) -> str:
         """Numbered lines for ordered, non-overlapping blocks."""
@@ -61,7 +72,8 @@ def load_source(root: Path, file: PreprocessedFile, secrets: SecretIndex) -> Sou
     """
     raw = root.joinpath(*PurePosixPath(file.path).parts).read_bytes()
     lines = split_lines(raw.decode("utf-8-sig", errors="replace"))
-    return SourceText(file.path, file.language, SecretMasker(file.path, secrets).mask_lines(lines))
+    masker = SecretMasker(file.path, secrets)
+    return SourceText(file.path, file.language, masker.mask_lines(lines), masker.mask_text)
 
 
 def is_formatting_only(finding: Finding) -> bool:
@@ -134,7 +146,7 @@ def build_context(
         "language": chunk.language,
         "style_guide": STYLE_GUIDES.get(chunk.language, DEFAULT_STYLE_GUIDE),
         "metrics": _metrics_text(chunk, metrics),
-        "static_findings": _findings_text(by_id),
+        "static_findings": _findings_text(by_id, source.mask_text),
         "partial_regions": _ranges_text(chunk.partial_regions),
         "code": source.render([*chunk.context, chunk.lines]),
     }
@@ -151,7 +163,7 @@ def for_style(finding: Finding) -> bool:
     return finding.category in (Category.STYLE, Category.MAINTAINABILITY)
 
 
-def _findings_text(by_id: dict[str, Finding]) -> str:
+def _findings_text(by_id: dict[str, Finding], mask_text: Callable[[str], str]) -> str:
     if not by_id:
         return "none"
     return "\n".join(
@@ -163,7 +175,7 @@ def _findings_text(by_id: dict[str, Finding]) -> str:
                 "category": finding.category.value,
                 "severity": finding.severity.value,
                 "lines": _range_text(finding.start_line, finding.end_line),
-                "message": finding.message[:MAX_MESSAGE_CHARACTERS],
+                "message": mask_text(finding.message)[:MAX_MESSAGE_CHARACTERS],
             }
         )
         for static_id, finding in by_id.items()

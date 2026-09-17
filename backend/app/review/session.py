@@ -111,6 +111,7 @@ class ReviewSession:
         self._semaphore = asyncio.Semaphore(options.concurrency)
         self._calls: list[CallRecord] = []
         self._sources: dict[str, SourceText] = {}
+        self._secrets = SecretIndex()
         self._stats = ReviewStats()
 
     async def review(
@@ -125,6 +126,7 @@ class ReviewSession:
                 skipped_chunks=plan.skipped,
             )
         )
+        self._secrets = static.secrets
         by_path = {file.path: file for file in files}
         paths = sorted({chunk.file_path for chunk in [*plan.review, *plan.style]})
         self._sources = await asyncio.to_thread(
@@ -217,6 +219,7 @@ class ReviewSession:
                 self._prompts,
                 files,
                 findings,
+                self._secrets,
                 min_confidence=self._options.min_confidence,
                 allow_external=self._options.allow_external,
                 on_call=on_call,

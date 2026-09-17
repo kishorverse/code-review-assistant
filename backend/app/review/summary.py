@@ -1,8 +1,9 @@
 """Write the executive summary of a review.
 
 The model receives counts and a list of finding titles with their files, never
-code, and is told to use only those facts. If no provider can write a usable
-summary, the review simply has none.
+code, and is told to use only those facts. Titles are masked for detected
+secrets, since some analyzers quote values from the code. If no provider can
+write a usable summary, the review simply has none.
 """
 
 from collections import Counter
@@ -14,6 +15,7 @@ from app.llm.models import LLMRequest, LLMResponse, Task
 from app.llm.prompts import PromptLibrary
 from app.llm.router import OnCall, Router
 from app.preprocess.models import PreprocessedFile
+from app.redaction import SecretIndex, mask_secret_values
 from app.review.answers import ReviewSummary, parse_summary_answer
 from app.review.context import describe_project
 from app.review.merge import is_reported
@@ -27,6 +29,7 @@ async def summarize(
     prompts: PromptLibrary,
     files: Sequence[PreprocessedFile],
     findings: Sequence[Finding],
+    secrets: SecretIndex,
     *,
     min_confidence: float,
     allow_external: bool,
@@ -39,7 +42,7 @@ async def summarize(
         user=prompts.render(
             "task_summarize",
             project=project_facts(files, findings, min_confidence),
-            findings=finding_lines(findings, min_confidence),
+            findings=finding_lines(findings, min_confidence, secrets),
         ),
         max_output_tokens=SUMMARY_OUTPUT_TOKENS,
         allow_external=allow_external,
@@ -70,14 +73,15 @@ def project_facts(
     )
 
 
-def finding_lines(findings: Sequence[Finding], min_confidence: float) -> str:
-    """One line per reported finding, most severe first, without any code."""
+def finding_lines(findings: Sequence[Finding], min_confidence: float, secrets: SecretIndex) -> str:
+    """One line per reported finding, most severe first, without any code or detected secret."""
     reported = sorted(
         (finding for finding in findings if is_reported(finding, min_confidence)),
         key=lambda f: (-f.severity.rank, f.file_path, f.start_line),
     )
     lines = [
-        f"- [{f.severity.value}] {f.category.value}, {f.file_path}:{f.start_line}: {f.title}"
+        f"- [{f.severity.value}] {f.category.value}, {f.file_path}:{f.start_line}: "
+        f"{mask_secret_values(f.title, secrets)}"
         f" (found by {', '.join(f.sources)})"
         for f in reported[:MAX_LISTED_FINDINGS]
     ]

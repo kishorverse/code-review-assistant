@@ -25,6 +25,7 @@ _KEY_BLOCK_BEGIN = re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----
 _KEY_BLOCK_END = re.compile(r"-----END [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----")
 MAX_KEY_BLOCK_LINES = 200
 """Masking stops here if a key block never ends, so a stray header cannot hide a whole file."""
+REDACTED_VALUE = "<REDACTED_SECRET>"
 
 
 @dataclass
@@ -90,6 +91,15 @@ class SecretMasker:
                 masked.append(self._mask_line(number, line))
         return masked
 
+    def mask_text(self, text: str) -> str:
+        """Mask detected secret values in free text about this file, such as a tool's message.
+
+        Placeholders match the ones used in the file's lines.
+        """
+        for value in sorted(self._index.matching_values(text), key=len, reverse=True):
+            text = text.replace(value, self._placeholder(value))
+        return text
+
     def _mask_line(self, number: int, line: str) -> str:
         if not self._index.is_sensitive(self._file_path, number, line):
             return line
@@ -125,6 +135,13 @@ def candidate_values(text: str) -> set[str]:
     values.update(word.strip("'\"`,;()") for word in text.split())
     values.discard("")
     return values
+
+
+def mask_secret_values(text: str, index: SecretIndex) -> str:
+    """Replace detected secret values in free text that is not tied to one file."""
+    for value in sorted(index.matching_values(text), key=len, reverse=True):
+        text = text.replace(value, REDACTED_VALUE)
+    return text
 
 
 def redact_lines(
