@@ -101,3 +101,7 @@ class ProviderRequestError(ProviderError):
 
 class AllProvidersUnavailableError(MarginError):
     """No provider could complete a request; the caller falls back to static results only."""
+
+
+class ConfigError(MarginError):
+    """A configuration file is missing or invalid."""

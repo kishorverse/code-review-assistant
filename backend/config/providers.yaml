@@ -1,0 +1,73 @@
+# Provider tuning and task routing for the LLM router.
+#
+# API keys and model ids are set in backend/.env; a provider without them is
+# simply left out of every route. See docs/routing.md for how routing works.
+
+# Rate-limit budgets. The router plans against a safety fraction of each value
+# (router.safety) and treats a limit that is left out as unlimited. If a
+# provider still answers "rate limited" or "quota used up", the router pauses
+# it and moves on, so values that are too high cost a retry, not a failed scan.
+limits:
+  # Google shows each key's limits only in AI Studio:
+  # https://aistudio.google.com/rate-limit. These defaults are deliberately
+  # low for the free tier; copy your key's values here. Daily quotas reset at
+  # midnight Pacific time.
+  gemini:
+    requests_per_minute: 5
+    tokens_per_minute: 250000
+    requests_per_day: 20
+  # The build.nvidia.com free tier allows about 40 requests per minute per model.
+  nvidia:
+    requests_per_minute: 40
+  # Hugging Face bills monthly credits instead of publishing request limits.
+  # Both Hugging Face models share this budget because they share an account.
+  huggingface:
+    requests_per_minute: 30
+  # A local model is limited by the machine, which max_concurrency handles.
+  local: {}
+
+providers:
+  gemini:
+    limits: gemini
+    max_concurrency: 2
+    timeout_seconds: 60
+  nvidia:
+    limits: nvidia
+    max_concurrency: 4
+    timeout_seconds: 90
+  hf-large:
+    limits: huggingface
+    max_concurrency: 2
+    timeout_seconds: 90
+  hf-small:
+    limits: huggingface
+    max_concurrency: 4
+    timeout_seconds: 60
+  local:
+    limits: local
+    # One request at a time keeps a laptop GPU or CPU responsive.
+    max_concurrency: 1
+    timeout_seconds: 300
+
+# The order in which each task tries providers. The local model comes last:
+# it is the fallback when hosted providers are unavailable, and the only
+# choice when code must not leave the machine.
+routing:
+  # Bug, security and performance review of each chunk: the most calls, so the
+  # provider with the most generous limits goes first.
+  review: [nvidia, gemini, hf-large, local]
+  # Style review needs less reasoning, so a small model is enough.
+  style: [hf-small, nvidia, gemini, local]
+  # Verification prefers a different model family from the reviewers; the
+  # provider that reported a finding is always excluded from verifying it.
+  verify: [gemini, hf-large, nvidia, local]
+  summarize: [gemini, nvidia, hf-large, local]
+
+router:
+  safety: 0.8
+  # How long a request may wait for rate-limit capacity before it tries the
+  # next provider instead.
+  interactive_max_wait_seconds: 5
+  batch_max_wait_seconds: 30
+  # Responses kept in memory, so re-reviewing unchanged code is free.
+  cache_entries: 512
