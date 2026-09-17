@@ -3,6 +3,7 @@ import zipfile
 from pathlib import Path
 
 import pytest
+import respx
 from typer.testing import CliRunner
 
 from app.cli import EXIT_CONFIG_ERROR, EXIT_FINDINGS_AT_THRESHOLD, EXIT_REJECTED, app
@@ -139,3 +140,17 @@ def test_invalid_provider_config_exits_with_a_config_error(
 
     assert result.exit_code == EXIT_CONFIG_ERROR
     assert "Configuration error" in result.stderr
+
+
+def test_review_with_only_hosted_providers_needs_consent_and_sends_nothing(
+    project: Path, monkeypatch: pytest.MonkeyPatch, respx_mock: respx.MockRouter
+) -> None:
+    hosted_only = Settings(_env_file=None, gemini_api_key="placeholder", gemini_model="gemini-test")
+    monkeypatch.setattr("app.cli.get_settings", lambda: hosted_only)
+
+    result = runner.invoke(app, ["scan", str(project), "--depth", "quick", "-f", "json"])
+
+    assert result.exit_code == 0, result.output
+    assert "Pass --allow-external" in result.stderr
+    assert not respx_mock.calls
+    assert json.loads(result.stdout)["review"]["calls"] == []

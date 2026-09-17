@@ -102,3 +102,17 @@ def test_apply_verdict(
     result = apply_verdict(AI_FINDING, VerificationAnswer.model_validate(answer), "gemini")
 
     assert (result.status, result.ai_note, result.severity.value) == (status, note, severity)
+
+
+async def test_a_prose_verdict_falls_back_to_the_next_model() -> None:
+    router = mock_router(
+        MockProvider("nvidia"),
+        MockProvider("gemini", respond=lambda request: "Looks valid to me."),
+        MockProvider("hf-large", respond=lambda request: '{"verdict": "valid"}'),
+    )
+
+    verified = await verify_finding(
+        router, default_prompts(), AI_FINDING, SOURCE, allow_external=True
+    )
+
+    assert verified.verified_by == ["hf-large"]

@@ -80,3 +80,18 @@ async def test_no_summary_when_no_provider_answers(make_project: ProjectFactory)
     )
 
     assert summary is None
+
+
+async def test_a_prose_summary_falls_back_to_the_next_model(make_project: ProjectFactory) -> None:
+    _, files = make_project({"app/db.py": "x = 1\n"})
+    router = mock_router(
+        MockProvider("gemini", respond=lambda request: "The code has issues."),
+        MockProvider("local", respond=lambda request: '{"headline": "Two issues."}'),
+    )
+
+    summary = await summarize(
+        router, default_prompts(), files, FINDINGS, min_confidence=0.6, allow_external=True
+    )
+
+    assert summary is not None
+    assert summary.headline == "Two issues."
