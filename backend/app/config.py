@@ -15,6 +15,7 @@ BACKEND_ROOT = Path(__file__).resolve().parent.parent
 
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR"]
 LogFormat = Literal["console", "json"]
+LLMMode = Literal["live", "mock"]
 
 
 class Settings(BaseSettings):
@@ -37,12 +38,22 @@ class Settings(BaseSettings):
     log_format: LogFormat = "console"
     cors_origins: list[str] = ["http://localhost:5173"]
 
+    # A provider is enabled when its model id (and, for hosted providers, its key) is set.
+    llm_mode: LLMMode = "live"
+    providers_config_path: Path = BACKEND_ROOT / "config" / "providers.yaml"
+
     gemini_api_key: SecretStr | None = None
+    gemini_model: str | None = None
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
     hf_token: SecretStr | None = None
+    hf_model_large: str | None = None
+    hf_model_small: str | None = None
     hf_base_url: str = "https://router.huggingface.co/v1"
     nvidia_api_key: SecretStr | None = None
+    nvidia_model: str | None = None
     nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
+    local_model: str | None = None
+    local_base_url: str = "http://localhost:11434/v1"
 
     opengrep_path: str | None = None
 
