@@ -7,6 +7,7 @@ import pytest
 from app.errors import (
     AllProvidersUnavailableError,
     ProviderAuthError,
+    ProviderConfigError,
     ProviderRequestError,
     ProviderUnavailableError,
     QuotaExhaustedError,
@@ -94,14 +95,19 @@ def routed(
     )
 
 
-def make_router(clock: FakeClock, *providers: RoutedProvider, cache_entries: int = 0) -> Router:
+def make_router(
+    clock: FakeClock,
+    *providers: RoutedProvider,
+    cache_entries: int = 0,
+    interactive_wait: float = 5.0,
+) -> Router:
     order = [entry.provider.name for entry in providers]
     return Router(
         providers,
         dict.fromkeys(Task, tuple(order)),
         clock=clock,
         cache=ResponseCache(cache_entries),
-        max_wait_seconds={Priority.INTERACTIVE: 5.0, Priority.BATCH: 30.0},
+        max_wait_seconds={Priority.INTERACTIVE: interactive_wait, Priority.BATCH: 30.0},
     )
 
 
@@ -355,7 +361,101 @@ async def test_a_call_that_waited_is_dropped_if_the_provider_was_paused_meanwhil
     assert clock.sleeps == [pytest.approx(15.0)]
     assert response.provider == "local"
     assert nvidia.calls == 0
+    assert limiter.wait_time(0) == 0.0, "the unsent request gives its slot back"
     assert (records[0].status, records[0].detail) == (CallStatus.SKIPPED, "paused: rate limited")
+
+
+async def test_a_request_that_waited_does_not_take_a_second_probe(clock: FakeClock) -> None:
+    limiter = RateLimiter(RateLimits(requests_per_minute=4, safety=1.0), clock)
+    for _ in range(4):
+        limiter.reserve(0)
+    nvidia = ScriptedProvider("nvidia")
+    entry = routed(nvidia, clock, limiter=limiter)
+    router = make_router(clock, entry, routed(ScriptedProvider("local"), clock))
+
+    async def paused_and_probed_meanwhile(seconds: float) -> None:
+        entry.breaker.open_for(2, "rate limited")
+        clock.advance(seconds)
+        assert entry.breaker.allows(), "another request takes the probe"
+
+    clock.sleep = paused_and_probed_meanwhile
+    records: list[CallRecord] = []
+    response = await router.complete(request(), on_call=records.append)
+
+    assert response.provider == "local"
+    assert nvidia.calls == 0
+    assert records[0].detail == "a recovery probe is already in flight"
+
+
+async def test_a_success_that_lands_after_a_quota_error_keeps_the_pause(clock: FakeClock) -> None:
+    release = asyncio.Event()
+    quota = QuotaExhaustedError("gemini", "daily", resets_at=clock.now() + timedelta(hours=12))
+    gemini = ScriptedProvider("gemini", release.wait, quota)
+    router = make_router(clock, routed(gemini, clock), routed(ScriptedProvider("local"), clock))
+
+    slow = asyncio.create_task(router.complete(request(user="slow")))
+    await asyncio.sleep(0)
+    await router.complete(request(user="fast"))
+    release.set()
+    await slow
+    later = await router.complete(request(user="later"))
+
+    [status, _] = router.status()
+    assert (status.breaker.state, status.breaker.reason) == (BreakerState.OPEN, "quota used up")
+    assert later.provider == "local"
+    assert gemini.calls == 2
+
+
+async def test_rejected_requests_do_not_pause_the_provider(clock: FakeClock) -> None:
+    too_long = ProviderRequestError("nvidia", "context too long")
+    nvidia = ScriptedProvider("nvidia", too_long, too_long, too_long, too_long)
+    router = make_router(clock, routed(nvidia, clock), routed(ScriptedProvider("local"), clock))
+
+    providers = [(await router.complete(request(user=str(n)))).provider for n in range(5)]
+
+    assert providers == ["local"] * 4 + ["nvidia"]
+    assert nvidia.calls == 5
+    assert router.status()[0].breaker.state is BreakerState.CLOSED
+
+
+async def test_wrong_model_id_pauses_the_provider_as_misconfigured(clock: FakeClock) -> None:
+    missing = ProviderConfigError("nvidia", "model or endpoint not found: unknown model")
+    router = make_router(
+        clock,
+        routed(ScriptedProvider("nvidia", missing), clock),
+        routed(ScriptedProvider("local"), clock),
+    )
+    records: list[CallRecord] = []
+
+    await router.complete(request(), on_call=records.append)
+
+    [status, _] = router.status()
+    assert records[0].status is CallStatus.MISCONFIGURED
+    assert status.breaker.reason == "check the model id and base URL"
+    assert status.breaker.reopens_in_seconds == 3_600
+
+
+async def test_interactive_requests_do_not_queue_behind_a_busy_provider(clock: FakeClock) -> None:
+    release = asyncio.Event()
+    local = ScriptedProvider("local", release.wait)
+    fallback = ScriptedProvider("nvidia")
+    router = make_router(
+        clock, routed(local, clock, concurrency=1), routed(fallback, clock), interactive_wait=0.01
+    )
+
+    batch = asyncio.create_task(router.complete(request(user="batch")))
+    await asyncio.sleep(0)
+    records: list[CallRecord] = []
+    async with asyncio.timeout(2):  # Fails fast instead of hanging if the request queues.
+        interactive = await router.complete(
+            request(user="interactive", priority=Priority.INTERACTIVE), on_call=records.append
+        )
+    release.set()
+    await batch
+
+    assert interactive.provider == "nvidia"
+    assert records[0].detail == "every concurrent slot is busy"
+    assert local.calls == 1
 
 
 async def test_half_open_breaker_lets_one_probe_through(clock: FakeClock) -> None:

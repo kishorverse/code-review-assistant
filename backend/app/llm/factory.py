@@ -73,7 +73,7 @@ def build_routed_providers(
         RoutedProvider(
             provider=provider,
             limiter=limiters[tuning.limits],
-            breaker=CircuitBreaker(clock),
+            breaker=CircuitBreaker(clock, probe_timeout_seconds=tuning.timeout_seconds),
             semaphore=asyncio.Semaphore(tuning.max_concurrency),
             timeout_seconds=tuning.timeout_seconds,
         )

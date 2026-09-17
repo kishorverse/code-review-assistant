@@ -3,8 +3,10 @@
 For every request the router walks the task's preference list. A provider is
 passed over when the request forbids it, when its circuit breaker is open, or
 when its rate limits would make the request wait too long. Otherwise the router
-reserves rate-limit capacity, calls it and, on failure, pauses it for as long
-as the failure suggests before trying the next one. Every attempt produces a
+reserves rate-limit capacity, waits for it and for a concurrency slot, and only
+then asks the breaker whether to call: the provider may have been paused while
+the request waited. On failure the provider is paused for as long as the
+failure suggests before the next one is tried. Every attempt produces a
 :class:`~app.llm.models.CallRecord`.
 """
 
@@ -15,6 +17,7 @@ from dataclasses import dataclass
 from app.errors import (
     AllProvidersUnavailableError,
     ProviderAuthError,
+    ProviderConfigError,
     ProviderError,
     ProviderRequestError,
     QuotaExhaustedError,
@@ -23,15 +26,25 @@ from app.errors import (
 from app.llm.breaker import BreakerState, BreakerStatus, CircuitBreaker
 from app.llm.cache import ResponseCache
 from app.llm.clock import Clock
-from app.llm.limits import RateLimiter
+from app.llm.limits import RateLimiter, Reservation
 from app.llm.models import CallRecord, CallStatus, LLMRequest, LLMResponse, Priority, Task
 from app.llm.providers.base import LLMProvider
 
 QUOTA_COOLDOWN_SECONDS = 3_600.0
 """How long to pause a provider whose quota ran out without saying when it resets."""
 
-AUTH_COOLDOWN_SECONDS = 3_600.0
-"""A rejected key will not start working by itself, so the provider is paused for long."""
+CONFIG_COOLDOWN_SECONDS = 3_600.0
+"""A rejected key or a wrong model id will not fix itself, so the provider is paused for long."""
+
+_REFUSED = frozenset(
+    {
+        CallStatus.RATE_LIMITED,
+        CallStatus.QUOTA_EXHAUSTED,
+        CallStatus.AUTH_FAILED,
+        CallStatus.MISCONFIGURED,
+    }
+)
+"""Failures where the provider did not process the request, so its tokens were not spent."""
 
 OnCall = Callable[[CallRecord], None]
 
@@ -149,45 +162,45 @@ class Router:
         return request.allow_external or not external
 
     async def _attempt(self, routed: RoutedProvider, request: LLMRequest) -> _Outcome:
+        breaker, limiter = routed.breaker, routed.limiter
+        if breaker.state is BreakerState.OPEN:
+            return self._skip(routed, request, _refusal(breaker))
         tokens = request.estimated_tokens()
-        refusal, wait = self._admission(routed, request, tokens)
-        if refusal is not None:
-            return self._skip(routed, request, refusal)
-        routed.limiter.reserve(tokens)
+        max_wait = self._max_wait_seconds[request.priority]
+        wait = limiter.wait_time(tokens)
+        if wait > max_wait:
+            return self._skip(routed, request, f"rate limit would delay the call {wait:.0f}s")
+
+        reservation = limiter.reserve(tokens)
         if wait > 0:
             await self._clock.sleep(wait)
-        async with routed.semaphore:
-            if routed.breaker.state is BreakerState.OPEN:
-                # Another call failed while this one waited; sending it too would pile on.
-                routed.limiter.refund_tokens(tokens)
-                return self._skip(routed, request, f"paused: {routed.breaker.status().reason}")
-            return await self._call(routed, request, tokens)
+        # Batch work queues for a slot; interactive requests move on within their wait budget.
+        slot_wait = max_wait - wait if request.priority is Priority.INTERACTIVE else None
+        if not await _acquire(routed.semaphore, slot_wait):
+            limiter.cancel(reservation)
+            return self._skip(routed, request, "every concurrent slot is busy")
+        try:
+            # Asked only now: the provider may have been paused while this request
+            # waited, and a recovering provider must receive a single probe.
+            if not breaker.allows():
+                limiter.cancel(reservation)
+                return self._skip(routed, request, _refusal(breaker))
+            return await self._call(routed, request, reservation)
+        finally:
+            routed.semaphore.release()
 
-    def _admission(
-        self, routed: RoutedProvider, request: LLMRequest, tokens: int
-    ) -> tuple[str | None, float]:
-        """Why the provider cannot take the request, if it cannot, and the rate-limit wait."""
-        breaker = routed.breaker
-        if breaker.state is BreakerState.OPEN:
-            return f"paused: {breaker.status().reason}", 0.0
-        wait = routed.limiter.wait_time(tokens)
-        if wait > self._max_wait_seconds[request.priority]:
-            return f"rate limit would delay the call {wait:.0f}s", wait
-        # Checked last because a half-open breaker hands out a single probe.
-        if not breaker.allows():
-            return "a recovery probe is already in flight", wait
-        return None, wait
-
-    async def _call(self, routed: RoutedProvider, request: LLMRequest, tokens: int) -> _Outcome:
+    async def _call(
+        self, routed: RoutedProvider, request: LLMRequest, reservation: Reservation
+    ) -> _Outcome:
         provider = routed.provider
         started = self._clock.monotonic()
         try:
             async with asyncio.timeout(routed.timeout_seconds):
                 response = await provider.complete(request)
         except (ProviderError, TimeoutError) as error:
-            status, refused = self._record_failure(routed.breaker, error)
-            if refused:
-                routed.limiter.refund_tokens(tokens)
+            status = self._record_failure(routed.breaker, error)
+            if status in _REFUSED:
+                routed.limiter.settle(reservation, used_tokens=0)
             latency_ms = round((self._clock.monotonic() - started) * 1000)
             detail = str(error) or "call timed out"
             record = _record(request, provider.name, provider.model, status, detail, latency_ms)
@@ -196,7 +209,7 @@ class Router:
         routed.breaker.record_success()
         used = response.input_tokens + response.output_tokens
         if used:
-            routed.limiter.refund_tokens(tokens - used)
+            routed.limiter.settle(reservation, used)
         record = CallRecord(
             task=request.task,
             provider=provider.name,
@@ -209,32 +222,29 @@ class Router:
         return _Outcome(response, record)
 
     @staticmethod
-    def _record_failure(
-        breaker: CircuitBreaker, error: ProviderError | TimeoutError
-    ) -> tuple[CallStatus, bool]:
-        """Pause the provider as the failure warrants.
-
-        Returns:
-            The call status, and whether the provider refused the request outright,
-            in which case the reserved tokens were not spent.
-        """
+    def _record_failure(breaker: CircuitBreaker, error: ProviderError | TimeoutError) -> CallStatus:
+        """Pause the provider as the failure warrants."""
         if isinstance(error, RateLimitedError):
             breaker.record_rate_limit(error.retry_after)
-            return CallStatus.RATE_LIMITED, True
+            return CallStatus.RATE_LIMITED
         if isinstance(error, QuotaExhaustedError):
             if error.resets_at is not None:
                 breaker.open_until(error.resets_at, "quota used up")
             else:
                 breaker.open_for(QUOTA_COOLDOWN_SECONDS, "quota used up")
-            return CallStatus.QUOTA_EXHAUSTED, True
+            return CallStatus.QUOTA_EXHAUSTED
         if isinstance(error, ProviderAuthError):
-            breaker.open_for(AUTH_COOLDOWN_SECONDS, "API key rejected")
-            return CallStatus.AUTH_FAILED, True
+            breaker.open_for(CONFIG_COOLDOWN_SECONDS, "API key rejected")
+            return CallStatus.AUTH_FAILED
+        if isinstance(error, ProviderConfigError):
+            breaker.open_for(CONFIG_COOLDOWN_SECONDS, "check the model id and base URL")
+            return CallStatus.MISCONFIGURED
         if isinstance(error, ProviderRequestError):
-            breaker.record_failure("requests rejected")
-            return CallStatus.REJECTED, False
+            # About this request only; pausing the provider would fail requests it can serve.
+            breaker.record_rejection()
+            return CallStatus.REJECTED
         breaker.record_failure("unavailable")
-        return CallStatus.UNAVAILABLE, False
+        return CallStatus.UNAVAILABLE
 
     @staticmethod
     def _skip(routed: RoutedProvider, request: LLMRequest, detail: str) -> _Outcome:
@@ -242,6 +252,25 @@ class Router:
         return _Outcome(
             None, _record(request, provider.name, provider.model, CallStatus.SKIPPED, detail)
         )
+
+
+async def _acquire(semaphore: asyncio.Semaphore, max_wait_seconds: float | None) -> bool:
+    """Take a concurrency slot, giving up after ``max_wait_seconds`` when a limit is given."""
+    if max_wait_seconds is None or not semaphore.locked():
+        await semaphore.acquire()
+        return True
+    try:
+        async with asyncio.timeout(max_wait_seconds):
+            await semaphore.acquire()
+    except TimeoutError:
+        return False
+    return True
+
+
+def _refusal(breaker: CircuitBreaker) -> str:
+    if breaker.state is BreakerState.OPEN:
+        return f"paused: {breaker.status().reason}"
+    return "a recovery probe is already in flight"
 
 
 def _record(

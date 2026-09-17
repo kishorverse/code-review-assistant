@@ -36,10 +36,16 @@ class TokenBucket:
             return 0.0
         return (needed - self._level) / self._refill_per_second
 
-    def reserve(self, amount: float) -> None:
-        """Spend ``amount`` now, going into debt if necessary."""
+    def reserve(self, amount: float) -> float:
+        """Spend ``amount`` now, going into debt if necessary.
+
+        Returns:
+            The amount charged, which is capped at capacity like the wait.
+        """
         self._refill()
-        self._level -= min(amount, self._capacity)
+        charged = min(amount, self._capacity)
+        self._level -= charged
+        return charged
 
     def refund(self, amount: float) -> None:
         """Return unused budget, up to capacity."""
@@ -51,6 +57,13 @@ class TokenBucket:
         elapsed = max(0.0, now - self._updated)
         self._level = min(self._capacity, self._level + elapsed * self._refill_per_second)
         self._updated = now
+
+
+@dataclass(frozen=True)
+class Reservation:
+    """What one request took from a limiter, so it can be cancelled or settled exactly."""
+
+    tokens: float
 
 
 @dataclass(frozen=True)
@@ -88,17 +101,33 @@ class RateLimiter:
             waits.append(self._token_bucket.wait_time(tokens))
         return max(waits, default=0.0)
 
-    def reserve(self, tokens: int) -> None:
-        """Account for one request of ``tokens`` in every bucket."""
+    def reserve(self, tokens: int) -> Reservation:
+        """Account for one request of an estimated ``tokens`` in every bucket."""
         for bucket in self._request_buckets:
             bucket.reserve(1)
-        if self._token_bucket is not None:
-            self._token_bucket.reserve(tokens)
+        charged = self._token_bucket.reserve(tokens) if self._token_bucket is not None else 0.0
+        return Reservation(tokens=charged)
 
-    def refund_tokens(self, tokens: int) -> None:
-        """Give back tokens that were reserved but not used."""
-        if self._token_bucket is not None and tokens > 0:
-            self._token_bucket.refund(tokens)
+    def cancel(self, reservation: Reservation) -> None:
+        """Return the request and its tokens, for a call that was never sent."""
+        for bucket in self._request_buckets:
+            bucket.refund(1)
+        if self._token_bucket is not None:
+            self._token_bucket.refund(reservation.tokens)
+
+    def settle(self, reservation: Reservation, used_tokens: int) -> None:
+        """Correct the token budget to what a sent call actually used.
+
+        Unused tokens are returned, and tokens beyond the estimate are charged, so
+        the budget follows real usage even when the estimate was too low.
+        """
+        if self._token_bucket is None:
+            return
+        difference = reservation.tokens - used_tokens
+        if difference > 0:
+            self._token_bucket.refund(difference)
+        elif difference < 0:
+            self._token_bucket.reserve(-difference)
 
 
 def _scaled(limit: int, safety: float) -> float:

@@ -57,8 +57,6 @@ def test_limiter_waits_for_the_tightest_bucket(clock: FakeClock) -> None:
     limiter.reserve(1000)
 
     assert limiter.wait_time(500) == pytest.approx(30.0)
-    limiter.refund_tokens(500)
-    assert limiter.wait_time(500) == 0.0
 
 
 def test_daily_limit_is_enforced(clock: FakeClock) -> None:
@@ -67,6 +65,52 @@ def test_daily_limit_is_enforced(clock: FakeClock) -> None:
         limiter.reserve(1)
 
     assert limiter.wait_time(1) == pytest.approx(8_640.0)
+
+
+def test_settle_returns_unused_tokens(clock: FakeClock) -> None:
+    limiter = RateLimiter(RateLimits(tokens_per_minute=1000, safety=1.0), clock)
+    reservation = limiter.reserve(800)
+
+    limiter.settle(reservation, used_tokens=300)
+
+    assert limiter.wait_time(700) == 0.0
+    assert limiter.wait_time(701) > 0.0
+
+
+def test_settle_charges_usage_beyond_the_estimate(clock: FakeClock) -> None:
+    limiter = RateLimiter(RateLimits(tokens_per_minute=1000, safety=1.0), clock)
+    reservation = limiter.reserve(200)
+
+    limiter.settle(reservation, used_tokens=900)
+
+    assert limiter.wait_time(100) == 0.0
+    assert limiter.wait_time(101) > 0.0
+
+
+def test_settle_never_refunds_more_than_was_charged(clock: FakeClock) -> None:
+    limiter = RateLimiter(RateLimits(tokens_per_minute=1000, safety=1.0), clock)
+    oversized = limiter.reserve(5000)
+    other = limiter.reserve(500)
+
+    limiter.settle(oversized, used_tokens=100)
+
+    assert oversized.tokens == 1000
+    assert other.tokens == 500
+    assert limiter.wait_time(400) == 0.0
+    assert limiter.wait_time(401) > 0.0
+
+
+def test_cancel_returns_the_request_and_its_tokens(clock: FakeClock) -> None:
+    limiter = RateLimiter(
+        RateLimits(requests_per_minute=2, requests_per_day=2, tokens_per_minute=100, safety=1.0),
+        clock,
+    )
+    limiter.reserve(10)
+    cancelled = limiter.reserve(90)
+
+    limiter.cancel(cancelled)
+
+    assert limiter.wait_time(90) == 0.0
 
 
 def test_unlimited_provider_never_waits(clock: FakeClock) -> None:
