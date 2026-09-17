@@ -5,6 +5,7 @@ Every error raised deliberately by the application derives from
 failures apart from programming errors.
 """
 
+from datetime import datetime
 from enum import StrEnum
 
 
@@ -52,3 +53,51 @@ class AnalyzerError(MarginError):
 
 class ToolUnavailableError(AnalyzerError):
     """The analyzer's executable is not installed, so the analyzer is skipped."""
+
+
+class ProviderError(MarginError):
+    """An LLM provider call failed. The router decides whether to try another provider."""
+
+    def __init__(self, provider: str, message: str) -> None:
+        super().__init__(f"{provider}: {message}")
+        self.provider = provider
+
+
+class RateLimitedError(ProviderError):
+    """The provider asked us to slow down (HTTP 429).
+
+    Attributes:
+        retry_after: Seconds the provider asked us to wait, when it said.
+    """
+
+    def __init__(self, provider: str, message: str, retry_after: float | None = None) -> None:
+        super().__init__(provider, message)
+        self.retry_after = retry_after
+
+
+class QuotaExhaustedError(ProviderError):
+    """A daily or monthly allowance is used up; retrying before it resets is pointless.
+
+    Attributes:
+        resets_at: When the allowance renews, if known.
+    """
+
+    def __init__(self, provider: str, message: str, resets_at: datetime | None = None) -> None:
+        super().__init__(provider, message)
+        self.resets_at = resets_at
+
+
+class ProviderAuthError(ProviderError):
+    """The API key was rejected; the provider stays unusable until configuration changes."""
+
+
+class ProviderUnavailableError(ProviderError):
+    """A transient failure: a timeout, a connection error or a server error."""
+
+
+class ProviderRequestError(ProviderError):
+    """The provider rejected this particular request or returned an unusable response."""
+
+
+class AllProvidersUnavailableError(MarginError):
+    """No provider could complete a request; the caller falls back to static results only."""
