@@ -5,8 +5,13 @@ Every error raised deliberately by the application derives from
 failures apart from programming errors.
 """
 
+from collections.abc import Sequence
 from datetime import datetime
 from enum import StrEnum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.llm.models import CallRecord, Task
 
 
 class MarginError(Exception):
@@ -100,7 +105,18 @@ class ProviderRequestError(ProviderError):
 
 
 class AllProvidersUnavailableError(MarginError):
-    """No provider could complete a request; the caller falls back to static results only."""
+    """No provider could complete a request; the caller falls back to static results only.
+
+    Attributes:
+        task: The task that could not be completed.
+        attempts: What happened with each provider that was considered.
+    """
+
+    def __init__(self, task: "Task", attempts: "Sequence[CallRecord]") -> None:
+        tried = ", ".join(f"{record.provider}: {record.status}" for record in attempts)
+        super().__init__(f"no provider could complete the {task} task ({tried or 'none enabled'})")
+        self.task = task
+        self.attempts = list(attempts)
 
 
 class ConfigError(MarginError):
