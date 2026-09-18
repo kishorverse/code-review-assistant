@@ -33,6 +33,8 @@ class SkipReason(StrEnum):
     INVALID_NAME = "invalid_name"
     SPECIAL_FILE = "special_file"
     UNREADABLE = "unreadable"
+    EXCLUDED = "excluded"
+    """Matched a pattern the user asked to leave out."""
 
 
 class SkippedFile(BaseModel):

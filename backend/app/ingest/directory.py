@@ -3,11 +3,14 @@
 The CLI scans directories on the user's machine. Copying them through the same
 filters and limits as uploads means analyzers see exactly what an uploaded
 archive would give them: no dependencies or build output, and nothing reached
-through a symbolic link.
+through a symbolic link. Paths matching the caller's exclude patterns are left
+out as well, such as fixtures that contain vulnerable code on purpose.
 """
 
 import os
 import stat
+from collections.abc import Sequence
+from fnmatch import fnmatchcase
 from functools import partial
 from pathlib import Path, PurePosixPath
 
@@ -25,7 +28,9 @@ from app.ingest.zipsafe import write_limited
 _COPY_CHUNK_BYTES = 64 * 1024
 
 
-def ingest_directory(source: Path, destination: Path, limits: IngestLimits) -> IngestResult:
+def ingest_directory(
+    source: Path, destination: Path, limits: IngestLimits, exclude: Sequence[str] = ()
+) -> IngestResult:
     """Copy reviewable files from ``source`` into ``destination``.
 
     This is blocking I/O; call it with ``asyncio.to_thread`` from async code.
@@ -34,6 +39,7 @@ def ingest_directory(source: Path, destination: Path, limits: IngestLimits) -> I
         source: The project directory to scan.
         destination: The scan's empty source directory.
         limits: Size and count limits to enforce.
+        exclude: Glob patterns for paths to leave out; see :func:`is_excluded`.
 
     Raises:
         IngestError: If the project has more reviewable files, or more bytes of
@@ -48,9 +54,14 @@ def ingest_directory(source: Path, destination: Path, limits: IngestLimits) -> I
     for directory, subdirectories, names in os.walk(root, followlinks=False):
         current = Path(directory)
         relative_directory = PurePosixPath(*current.relative_to(root).parts)
-        subdirectories[:] = _descend_into(current, relative_directory, subdirectories, skipped)
+        subdirectories[:] = _descend_into(
+            current, relative_directory, subdirectories, skipped, exclude
+        )
         for name in sorted(names):
             path, relative = current / name, relative_directory / name
+            if is_excluded(relative, exclude):
+                skipped.append(SkippedFile(path=relative.as_posix(), reason=SkipReason.EXCLUDED))
+                continue
             reason, size = _inspect(path, relative, limits)
             if reason is None:
                 _enforce_limits(len(files) + 1, total_bytes + size, limits)
@@ -68,14 +79,31 @@ def ingest_directory(source: Path, destination: Path, limits: IngestLimits) -> I
     )
 
 
+def is_excluded(path: PurePosixPath, patterns: Sequence[str]) -> bool:
+    """Whether a path relative to the project root matches an exclude pattern.
+
+    Patterns are shell-style globs matched against the whole relative path, where
+    ``*`` also matches ``/``: ``eval/datasets``, ``*/fixtures`` or ``*.generated.py``.
+    A matching directory is left out with everything in it.
+    """
+    text = path.as_posix()
+    return any(fnmatchcase(text, pattern.strip("/")) for pattern in patterns)
+
+
 def _descend_into(
-    current: Path, relative: PurePosixPath, subdirectories: list[str], skipped: list[SkippedFile]
+    current: Path,
+    relative: PurePosixPath,
+    subdirectories: list[str],
+    skipped: list[SkippedFile],
+    exclude: Sequence[str],
 ) -> list[str]:
     kept: list[str] = []
     for name in sorted(subdirectories):
         path = (relative / name).as_posix()
         if (current / name).is_symlink():
             skipped.append(SkippedFile(path=path, reason=SkipReason.SYMLINK))
+        elif is_excluded(relative / name, exclude):
+            skipped.append(SkippedFile(path=path, reason=SkipReason.EXCLUDED))
         elif name.lower() in EXCLUDED_DIRECTORIES:
             skipped.append(SkippedFile(path=path, reason=SkipReason.EXCLUDED_DIRECTORY))
         else:

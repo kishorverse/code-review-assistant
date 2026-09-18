@@ -40,6 +40,17 @@ def test_json_report_lists_findings_without_server_paths(project: Path, tmp_path
     assert str(tmp_path) not in result.stdout
 
 
+def test_excluded_paths_are_not_scanned(project: Path) -> None:
+    result = runner.invoke(
+        app, ["scan", str(project), "--exclude", "app", "--format", "json", "--quiet"]
+    )
+
+    assert result.exit_code == 0, result.output
+    report = json.loads(result.stdout)
+    assert report["summary"]["files_scanned"] == 0
+    assert {"path": "app", "reason": "excluded"} in report["skipped_files"]
+
+
 def test_fail_on_threshold_sets_the_exit_code(project: Path) -> None:
     failing = runner.invoke(app, ["scan", str(project), "--fail-on", "high", "--quiet"])
     passing = runner.invoke(app, ["scan", str(project), "--fail-on", "critical", "--quiet"])

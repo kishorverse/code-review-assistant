@@ -617,7 +617,7 @@ export interface components {
          * @description Why a file was left out of the review. Skipping is not an error.
          * @enum {string}
          */
-        SkipReason: "excluded_directory" | "lockfile" | "minified" | "too_large" | "binary" | "symlink" | "invalid_name" | "special_file" | "unreadable";
+        SkipReason: "excluded_directory" | "lockfile" | "minified" | "too_large" | "binary" | "symlink" | "invalid_name" | "special_file" | "unreadable" | "excluded";
         /**
          * SkippedFile
          * @description A file that was present in the upload but not extracted.

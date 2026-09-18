@@ -55,6 +55,27 @@ def test_copies_reviewable_files_and_reports_what_was_skipped(
     assert result.root == destination.resolve()
 
 
+@pytest.mark.parametrize(
+    ("patterns", "left_out"),
+    [
+        (["app/utils"], [SkippedFile(path="app/utils", reason=SkipReason.EXCLUDED)]),
+        (["app/utils/"], [SkippedFile(path="app/utils", reason=SkipReason.EXCLUDED)]),
+        (["*/helpers.py"], [SkippedFile(path="app/utils/helpers.py", reason=SkipReason.EXCLUDED)]),
+        (["*.md"], [SkippedFile(path="README.md", reason=SkipReason.EXCLUDED)]),
+    ],
+)
+def test_paths_matching_exclude_patterns_are_left_out(
+    project: Path, tmp_path: Path, patterns: list[str], left_out: list[SkippedFile]
+) -> None:
+    result = ingest_directory(
+        project, tmp_path / "scan", IngestLimits(max_file_bytes=1024), exclude=patterns
+    )
+
+    assert set(left_out) <= set(result.skipped)
+    assert not {entry.path for entry in left_out} & set(result.files)
+    assert "app/main.py" in result.files
+
+
 def test_never_follows_symbolic_links(project: Path, tmp_path: Path) -> None:
     outside = tmp_path / "outside"
     write(outside, "secret.py", "TOKEN = 1\n")
