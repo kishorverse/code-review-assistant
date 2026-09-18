@@ -52,7 +52,7 @@ class ReviewedFile(BaseModel):
 class NotReported(BaseModel):
     """Findings kept in the report but left out of its counts, by reason."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
 
     dismissed_by_ai: NonNegativeInt = 0
     rejected: NonNegativeInt = 0
@@ -62,7 +62,7 @@ class NotReported(BaseModel):
 class ReportCounts(BaseModel):
     """Headline numbers. ``findings`` and the breakdowns count reported findings only."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
 
     files_scanned: NonNegativeInt
     files_reviewed: NonNegativeInt

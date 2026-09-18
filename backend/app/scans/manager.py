@@ -58,7 +58,7 @@ log = structlog.get_logger(__name__)
 class ScanInfo(BaseModel):
     """A scan's status and settings, as clients see them."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
 
     id: str
     source: str

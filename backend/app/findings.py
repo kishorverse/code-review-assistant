@@ -88,7 +88,7 @@ class Finding(BaseModel):
             model dismissed it or disagreed with it.
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
 
     id: str = Field(default_factory=lambda: uuid.uuid4().hex)
     file_path: str

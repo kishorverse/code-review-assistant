@@ -45,7 +45,7 @@ Manager = Annotated[ScanManager, Depends(get_manager)]
 class ScanDetail(BaseModel):
     """A scan's status, and its headline results once it has finished."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
 
     scan: ScanInfo
     summary: ReportCounts | None = None
@@ -62,7 +62,7 @@ class FindingDecision(BaseModel):
 class FileEntry(BaseModel):
     """One extracted file, with how many reported findings it has."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
 
     path: str
     language: str | None
@@ -74,7 +74,7 @@ class FileEntry(BaseModel):
 class FileTree(BaseModel):
     """The scan's files and the files left out of it."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
 
     files: list[FileEntry]
     skipped: list[SkippedFile]
@@ -83,7 +83,7 @@ class FileTree(BaseModel):
 class FileContent(BaseModel):
     """The text of one extracted file."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
 
     path: str
     language: str | None

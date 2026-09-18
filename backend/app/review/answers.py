@@ -218,7 +218,12 @@ def parse_verification_answer(text: str) -> VerificationAnswer:
 class TopRisk(BaseModel):
     """One of the most important problems named in a summary."""
 
-    model_config = ConfigDict(extra="ignore", frozen=True, str_strip_whitespace=True)
+    model_config = ConfigDict(
+        extra="ignore",
+        frozen=True,
+        str_strip_whitespace=True,
+        json_schema_serialization_defaults_required=True,
+    )
 
     title: str = Field(min_length=1)
     files: list[str] = []
@@ -228,7 +233,12 @@ class TopRisk(BaseModel):
 class ReviewSummary(BaseModel):
     """The executive summary of a review."""
 
-    model_config = ConfigDict(extra="ignore", frozen=True, str_strip_whitespace=True)
+    model_config = ConfigDict(
+        extra="ignore",
+        frozen=True,
+        str_strip_whitespace=True,
+        json_schema_serialization_defaults_required=True,
+    )
 
     headline: str = Field(min_length=1)
     strengths: list[str] = []

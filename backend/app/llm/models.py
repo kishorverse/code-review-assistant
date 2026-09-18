@@ -101,7 +101,7 @@ class CallRecord(BaseModel):
             provider saw which file; ``None`` for calls about the whole project.
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
 
     task: Task
     provider: str

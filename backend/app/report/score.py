@@ -48,7 +48,7 @@ Grade = Literal["A", "B", "C", "D", "E"]
 class QualityScore(BaseModel):
     """The score, its grade and every input needed to recompute it."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
 
     score: int = Field(ge=0, le=100)
     grade: Grade
