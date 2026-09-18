@@ -101,14 +101,30 @@ class VariantResult:
     verification: Verification | None = None
 
 
-def evaluate(dataset: Dataset, runs_dir: Path = RUNS_DIR) -> list[VariantResult]:
-    """Score every configuration recorded in ``runs_dir``."""
+def evaluate(
+    dataset: Dataset, runs_dir: Path = RUNS_DIR, only_files: frozenset[str] | None = None
+) -> list[VariantResult]:
+    """Score every configuration recorded in ``runs_dir``, optionally on some files only."""
+    wanted = set(dataset.files) if only_files is None else only_files
     results: list[VariantResult] = []
     for path in sorted(runs_dir.glob("*.jsonl")):
-        records = [r for name, r in sorted(load_records(path).items()) if name in dataset.files]
+        records = [r for name, r in sorted(load_records(path).items()) if name in wanted]
         variants = sorted({v for record in records for v in record.variants})
         results.extend(variant_result(dataset, records, variant) for variant in variants)
     return sorted(results, key=lambda result: _order(result.variant))
+
+
+def common_model_results(dataset: Dataset, runs_dir: Path = RUNS_DIR) -> list[VariantResult]:
+    """The single-model configurations, scored on the files every one of them completed.
+
+    Quotas stopped some models early, so the full comparison covers different files; this one
+    compares like with like.
+    """
+    models = [r for r in evaluate(dataset, runs_dir) if r.variant.startswith("F-")]
+    if not models:
+        return []
+    common = frozenset.intersection(*(result.covered for result in models))
+    return [r for r in evaluate(dataset, runs_dir, common) if r.variant.startswith("F-")]
 
 
 def variant_result(dataset: Dataset, records: Sequence[FileRecord], variant: str) -> VariantResult:
@@ -272,14 +288,24 @@ TITLES = {
     "categories": "Per category (F1, with precision / recall)",
     "cwe": "Security recall per CWE",
     "models": "Model comparison (review task only, one provider each)",
+    "models-common": "Model comparison on the files every model completed",
     "verification": "Cross-model verification",
     "cost": "Cost and routing",
     "labels": "Labels found",
 }
 
 
-def tables(dataset: Dataset, results: Sequence[VariantResult]) -> dict[str, str]:
-    """Every table, by name, as ``docs/evaluation.md`` embeds them."""
+def tables(
+    dataset: Dataset,
+    results: Sequence[VariantResult],
+    common: Sequence[VariantResult] = (),
+) -> dict[str, str]:
+    """Every table, by name, as ``docs/evaluation.md`` embeds them.
+
+    Args:
+        common: The single-model configurations scored on the files they all completed.
+    """
+    common_files = len(common[0].covered) if common else 0
     ablations = _pick(results, [*PINNED, *ROUTED[1:]])
     return {
         "pinned": _headline(_pick(results, PINNED), pinned=True),
@@ -287,6 +313,7 @@ def tables(dataset: Dataset, results: Sequence[VariantResult]) -> dict[str, str]
         "categories": _categories(ablations),
         "cwe": _cwe(dataset, ablations),
         "models": _models([r for r in results if r.variant.startswith("F-")]),
+        "models-common": f"{common_files} files, the same for every model.\n\n" + _models(common),
         "verification": _verification(results),
         "cost": _cost(results),
         "labels": "✓ found, · missed, — file not completed by that configuration.\n\n"
@@ -294,13 +321,16 @@ def tables(dataset: Dataset, results: Sequence[VariantResult]) -> dict[str, str]
     }
 
 
-def to_markdown(dataset: Dataset, results: Sequence[VariantResult]) -> str:
+def to_markdown(
+    dataset: Dataset, results: Sequence[VariantResult], common: Sequence[VariantResult] = ()
+) -> str:
     """Every table, with headings, for ``tables.md``."""
     header = (
         f"Dataset: {dataset.name} v{dataset.version}, {len(dataset.files)} files "
         f"({len(dataset.clean_files)} clean), {len(dataset.labels)} labels."
     )
-    sections = [f"## {TITLES[name]}\n\n{table}" for name, table in tables(dataset, results).items()]
+    named = tables(dataset, results, common)
+    sections = [f"## {TITLES[name]}\n\n{table}" for name, table in named.items()]
     return "\n\n".join([header, *sections]) + "\n"
 
 
@@ -468,12 +498,17 @@ def _labels(dataset: Dataset, results: Sequence[VariantResult]) -> str:
     return "\n".join(rows)
 
 
-def write(dataset: Dataset, results: Sequence[VariantResult], out_dir: Path = RESULTS_DIR) -> None:
+def write(
+    dataset: Dataset,
+    results: Sequence[VariantResult],
+    common: Sequence[VariantResult] = (),
+    out_dir: Path = RESULTS_DIR,
+) -> None:
     """Write ``scores.json`` and ``tables.md`` to ``out_dir``."""
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "scores.json").write_text(
         json.dumps(to_json(results), indent=2) + "\n", encoding="utf-8", newline="\n"
     )
     (out_dir / "tables.md").write_text(
-        to_markdown(dataset, results), encoding="utf-8", newline="\n"
+        to_markdown(dataset, results, common), encoding="utf-8", newline="\n"
     )

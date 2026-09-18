@@ -115,7 +115,7 @@ def score_command() -> None:
     """Score every recorded run and write scores.json and tables.md."""
     dataset = load_dataset()
     results = report.evaluate(dataset)
-    report.write(dataset, results)
+    report.write(dataset, results, report.common_model_results(dataset))
     for result in results:
         overall = result.scorecard.overall
         console.print(
@@ -130,7 +130,7 @@ def score_command() -> None:
 def docs_command() -> None:
     """Write the current tables into docs/evaluation.md, between its TABLE markers."""
     dataset = load_dataset()
-    named = report.tables(dataset, report.evaluate(dataset))
+    named = report.tables(dataset, report.evaluate(dataset), report.common_model_results(dataset))
     for name in ("routing", "latency"):
         path = report.RESULTS_DIR / f"{name}.md"
         if path.exists():
