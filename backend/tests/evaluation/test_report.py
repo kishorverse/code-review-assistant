@@ -107,3 +107,35 @@ def test_only_complete_files_and_reported_findings_are_scored(tmp_path: Path) ->
     table = to_markdown(dataset, [result])
     assert "| F-nvidia | `nemotron` | 2/3 | 2 | 0.50 | 1/1 |" in table
     assert "| a/bug | bug | semantic | ✓ |" in table
+
+
+def test_verification_shows_whether_the_verifier_disputed_the_right_findings(
+    tmp_path: Path,
+) -> None:
+    dataset = load_dataset(dataset_at(tmp_path / "data"))
+    runs = tmp_path / "runs"
+    runs.mkdir()
+    real = finding("a.py", 2, sources=["nvidia"], verified_by=["local"])
+    noise = finding(
+        "clean.py",
+        1,
+        sources=["nvidia"],
+        status=FindingStatus.NEEDS_REVIEW,
+        ai_note="local disagreed: the value is constant.",
+    )
+    records = [
+        record("a.py", [real]).model_copy(update={"variants": {"E-nvidia+local": [real]}}),
+        record("clean.py", [noise]).model_copy(update={"variants": {"E-nvidia+local": [noise]}}),
+    ]
+    (runs / "verify.jsonl").write_text(
+        "".join(r.model_dump_json() + "\n" for r in records), encoding="utf-8"
+    )
+
+    [result] = evaluate(dataset, runs)
+
+    assert result.verification is not None
+    assert (result.verification.confirmed, result.verification.confirmed_real) == (1, 1)
+    assert (result.verification.disputed, result.verification.disputed_false) == (1, 1)
+    assert result.scorecard.overall.precision == 0.5
+    assert result.verification.precision_if_hidden == 1.0
+    assert "| E-nvidia+local | 1 | 1 | 1 | 1 | 0.50 | 1.00 |" in to_markdown(dataset, [result])

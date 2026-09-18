@@ -17,22 +17,54 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from app.findings import FindingStatus
 from app.llm.models import CallRecord, CallStatus, Task
 from app.review.merge import is_reported
 from app.review.planner import DEFAULT_MIN_CONFIDENCE
 from evaluation.dataset import Dataset
 from evaluation.runner import PROVIDER_MODEL_SETTINGS, RUNS_DIR, FileRecord, load_records
-from evaluation.scoring import Counts, Prediction, Scorecard, score
+from evaluation.scoring import Counts, Prediction, Scorecard, assess, score
 
 RESULTS_DIR = RUNS_DIR.parent
+PINNED = ("A", "B-nvidia", "F-nvidia", "E-nvidia+gemini", "E-nvidia+local")
+"""The ablation with one reviewer (NVIDIA), review task only."""
+ROUTED = ("A", "B", "D", "E")
+"""The ablation as routed across every provider, with style review."""
+NAMES = {"F-nvidia": "D-nvidia"}
+"""F-nvidia is also the hybrid step of the pinned ablation, so it is named for it there."""
 DESCRIPTIONS = {
     "A": "Static analysis only",
-    "B": "LLM only (no static context)",
-    "D": "Hybrid: static context + LLM review",
-    "E": "Hybrid + cross-model verification",
+    "B-nvidia": "LLM only (no static context)",
+    "F-nvidia": "Hybrid: static context + LLM review",
+    "E-nvidia+gemini": "Hybrid + cross-check by Gemini",
+    "E-nvidia+local": "Hybrid + cross-check by the local model",
+    "B": "LLM only, routed",
+    "D": "Hybrid, routed",
+    "E": "Hybrid + cross-check, routed",
 }
 MODEL_SOURCES = frozenset(PROVIDER_MODEL_SETTINGS) | {"mock"}
 """Finding sources that are models rather than analyzers."""
+
+
+@dataclass(frozen=True)
+class Verification:
+    """What cross-model verification decided, and whether it decided right.
+
+    Disputed findings stay reported, flagged for human review, so verification
+    changes no score by itself; this shows whether the flags point at the right
+    findings.
+
+    Attributes:
+        confirmed_real: Confirmed findings that match a labeled issue.
+        disputed_false: Disputed findings that match no labeled issue.
+        precision_if_hidden: Overall precision had disputed findings been hidden.
+    """
+
+    confirmed: int
+    confirmed_real: int
+    disputed: int
+    disputed_false: int
+    precision_if_hidden: float | None
 
 
 @dataclass(frozen=True)
@@ -63,6 +95,7 @@ class VariantResult:
     file_seconds: tuple[float, float]
     discarded: int
     tasks_failed: int
+    verification: Verification | None = None
 
 
 def evaluate(dataset: Dataset, runs_dir: Path = RUNS_DIR) -> list[VariantResult]:
@@ -81,12 +114,36 @@ def variant_result(dataset: Dataset, records: Sequence[FileRecord], variant: str
     covered = {record.file for record in complete}
     labels = [lb for lb in dataset.labels if lb.label.file in covered]
     clean = [name for name in dataset.clean_files if name in covered]
-    predictions = [
-        Prediction.from_finding(finding)
+    reported = [
+        finding
         for record in complete
         for finding in record.variants[variant]
         if is_reported(finding, DEFAULT_MIN_CONFIDENCE)
     ]
+    predictions = [Prediction.from_finding(finding) for finding in reported]
+    correct = assess(predictions, labels).correct
+    confirmed = [f for f in reported if f.verified_by]
+    # The verifier records a dispute as needs_review with a note saying who disagreed;
+    # review's own judgements can also leave a finding needing review, without that note.
+    disputed = [
+        f
+        for f in reported
+        if f.status is FindingStatus.NEEDS_REVIEW and " disagreed" in (f.ai_note or "")
+    ]
+    kept = len(predictions) - len(disputed)
+    verification = (
+        Verification(
+            confirmed=len(confirmed),
+            confirmed_real=sum(f.id in correct for f in confirmed),
+            disputed=len(disputed),
+            disputed_false=sum(f.id not in correct for f in disputed),
+            precision_if_hidden=(
+                (len(correct) - sum(f.id in correct for f in disputed)) / kept if kept else None
+            ),
+        )
+        if variant == "E" or variant.startswith("E-")
+        else None
+    )
     by_models = [p for p in predictions if MODEL_SOURCES.intersection(p.sources)]
     calls = [call for record in complete for call in _calls_for(record, variant)]
     totals = [
@@ -106,6 +163,7 @@ def variant_result(dataset: Dataset, records: Sequence[FileRecord], variant: str
         file_seconds=_p50_p95([total / 1000 for total in totals]),
         discarded=sum(record.stats.get("discarded", 0) for record in complete),
         tasks_failed=sum(record.stats.get("tasks_failed", 0) for record in records),
+        verification=verification,
     )
 
 
@@ -146,8 +204,20 @@ def _p50_p95(values: Sequence[float]) -> tuple[float, float]:
     return (statistics.median(values), cuts[18])
 
 
-def _order(variant: str) -> tuple[int, str]:
-    return (0, variant) if variant in DESCRIPTIONS else (1, variant)
+def _order(variant: str) -> tuple[int, int, str]:
+    for group, members in enumerate((PINNED, ROUTED)):
+        if variant in members:
+            return (group, members.index(variant), variant)
+    return (2, 0, variant)
+
+
+def _pick(results: Sequence[VariantResult], variants: Sequence[str]) -> list[VariantResult]:
+    by_variant = {result.variant: result for result in results}
+    return [by_variant[variant] for variant in variants if variant in by_variant]
+
+
+def _name(variant: str, *, pinned: bool = False) -> str:
+    return NAMES.get(variant, variant) if pinned else variant
 
 
 # Rendering ------------------------------------------------------------------
@@ -187,23 +257,28 @@ def to_json(results: Sequence[VariantResult]) -> dict[str, Any]:
             "file_seconds_p50_p95": result.file_seconds,
             "discarded": result.discarded,
             "tasks_failed": result.tasks_failed,
+            "verification": asdict(result.verification) if result.verification else None,
         }
     return out
 
 
 def to_markdown(dataset: Dataset, results: Sequence[VariantResult]) -> str:
     """The tables quoted in ``docs/evaluation.md``."""
-    ablations = [r for r in results if r.variant in DESCRIPTIONS]
+    pinned = _pick(results, PINNED)
+    routed = _pick(results, ROUTED)
+    ablations = _pick(results, [*PINNED, *ROUTED[1:]])
     models = [r for r in results if r.variant.startswith("F-")]
     sections = [
         f"Dataset: {dataset.name} v{dataset.version}, {len(dataset.files)} files "
         f"({len(dataset.clean_files)} clean), {len(dataset.labels)} labels.",
-        "## Ablations\n\n" + _headline(ablations),
+        "## Ablation with one reviewer (NVIDIA, review task)\n\n" + _headline(pinned, pinned=True),
+        "## Ablation as routed (every provider, review and style)\n\n" + _headline(routed),
         "## Per category (F1, with precision / recall)\n\n" + _categories(ablations),
         "## Security recall per CWE\n\n" + _cwe(dataset, ablations),
         "## Model comparison (review task only, one provider each)\n\n" + _models(models)
         if models
         else "",
+        "## Cross-model verification\n\n" + _verification(results),
         "## Cost and routing\n\n" + _cost(results),
         "## Labels found\n\n" + _labels(dataset, results),
     ]
@@ -215,7 +290,7 @@ def pct(value: float | None) -> str:
     return "—" if value is None else f"{value:.2f}"
 
 
-def _headline(results: Sequence[VariantResult]) -> str:
+def _headline(results: Sequence[VariantResult], *, pinned: bool = False) -> str:
     rows = [
         "| Config | Description | Files | Reported | Precision | Recall | F1 | Macro-F1 "
         "| Clean-file FPs | Recall (static-type) | Recall (semantic) |",
@@ -226,7 +301,8 @@ def _headline(results: Sequence[VariantResult]) -> str:
         static = card.recall_by_detection["static"]
         semantic = card.recall_by_detection["semantic"]
         rows.append(
-            f"| {r.variant} | {DESCRIPTIONS.get(r.variant, _model_description(r))} "
+            f"| {_name(r.variant, pinned=pinned)} "
+            f"| {DESCRIPTIONS.get(r.variant, _model_description(r))} "
             f"| {r.complete_files}/{r.files} | {card.overall.predictions} "
             f"| {pct(card.overall.precision)} | {pct(card.overall.recall)} "
             f"| {pct(card.overall.f1)} | {pct(card.macro_f1)} | {card.clean_file_findings} "
@@ -291,6 +367,24 @@ def _cwe(dataset: Dataset, results: Sequence[VariantResult]) -> str:
         total = sum(lb.label.cwe == cwe for lb in dataset.labels)
         cells = [_found(r.scorecard.recall_by_cwe.get(cwe)) for r in results]
         rows.append(f"| {cwe} | {total} | " + " | ".join(cells) + " |")
+    return "\n".join(rows)
+
+
+def _verification(results: Sequence[VariantResult]) -> str:
+    rows = [
+        "| Config | Confirmed | of them labeled issues | Disputed (flagged for review) "
+        "| of them false positives | Precision as reported | Precision if disputed were hidden |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for r in results:
+        v = r.verification
+        if v is None:
+            continue
+        rows.append(
+            f"| {r.variant} | {v.confirmed} | {v.confirmed_real} | {v.disputed} "
+            f"| {v.disputed_false} | {pct(r.scorecard.overall.precision)} "
+            f"| {pct(v.precision_if_hidden)} |"
+        )
     return "\n".join(rows)
 
 
