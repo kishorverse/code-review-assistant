@@ -13,7 +13,7 @@ This document records which technologies Margin uses and why. Exact versions are
                                                      │                  │
 ┌──────────────────────┐   same pipeline             │ subprocesses     │ HTTPS (with consent)
 │ CLI (Typer)          │ ─────────────────►          ▼                  ▼
-│ GitHub Action (SARIF)│              Ruff · Bandit · mypy ·   Gemini · Llama (HF) · NVIDIA NIM
+│ GitHub Action (SARIF)│              Ruff · Bandit · mypy ·   Gemini · HF · NVIDIA NIM · local
 └──────────────────────┘              Radon · Vulture · Lizard ·
                                       detect-secrets · Opengrep
 ```
@@ -42,20 +42,20 @@ The brief asks for open-source or publicly available models. Margin uses three h
 
 | Provider | Access | Models | Primary role | Why |
 |---|---|---|---|---|
-| NVIDIA NIM | OpenAI-compatible API (`integrate.api.nvidia.com`) | An open-weight instruct / coder model from the NVIDIA API catalog | Bulk chunk review (bugs, security, performance) | The most generous free rate limit, so it carries the highest-volume task. |
-| Hugging Face Inference Providers | OpenAI-compatible router (`router.huggingface.co`) | Meta Llama 3.3 70B Instruct, Llama 3.1 8B Instruct | Style review (8B); fallback review (70B) | Open-weight Llama models. The small model is cheap enough for high-volume style checks. |
-| Google Gemini | REST API (`generateContent`) | Gemini Flash (free tier) | Cross-model verification, project summary | Long context and strong code reasoning. Publicly available, but a closed model, so it is used behind the consent gate. |
+| NVIDIA NIM | OpenAI-compatible API (`integrate.api.nvidia.com`) | Nemotron 3 Super 120B-A12B | Bulk chunk review (bugs, security, performance) | The most generous free tier (no daily cap), so it carries the highest-volume task. |
+| Hugging Face Inference Providers | OpenAI-compatible router (`router.huggingface.co`) | gpt-oss-120b, Qwen3-Coder-30B-A3B-Instruct | Style review (Qwen3-Coder); fallback review and verification (gpt-oss) | Open-weight models. gpt-oss was the fastest reviewer in the evaluation; the small code model keeps style checks cheap. |
+| Google Gemini | REST API (`generateContent`) | Gemini 3.5 Flash (free tier) | Cross-model verification, project summary | The most accurate reviewer in the evaluation, but its free tier allows few requests a day. Publicly available, but a closed model, so it is used behind the consent gate. |
 | Local model (optional) | OpenAI-compatible server on this machine, Ollama by default | Any open-weight model you have pulled | Private mode; last fallback for every task | Code never leaves the machine, so it needs no consent. Smaller models review less thoroughly. |
 | Mock | In-process | Canned JSON answers | Tests, CI and offline demos | Deterministic, free and needs no keys. |
 
-Model ids are not hard-coded. `scripts/list_models.py` lists the models each key can access and the models on a running local server; the chosen ids go in `.env`.
+Model ids are not hard-coded. `scripts/list_models.py` lists the models each key can access and the models on a running local server; the chosen ids go in `.env`. Why these models, with evaluation numbers: [model selection](model_selection.md).
 
 **Clients.** Providers are called directly with `httpx` instead of vendor SDKs (`google-genai`, `openai`). One client means uniform timeouts, no SDK retries competing with the router, exact error mapping (a Gemini daily quota and a per-minute limit are both HTTP 429 but need different handling), fewer dependencies, and tests against recorded HTTP responses.
 
 ### Privacy
 
 - Code is sent to external providers only after explicit consent, and each provider can be switched off.
-- Secrets detected in the code are replaced with placeholders before any request.
+- Secrets detected in the code are masked before any request, and the prompts tell models the masked values are real secrets.
 - Only the chunk under review is sent, never the whole repository.
 - Uploaded code is deleted after a retention window.
 
