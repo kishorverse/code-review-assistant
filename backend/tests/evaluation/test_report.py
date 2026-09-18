@@ -5,7 +5,7 @@ from pathlib import Path
 from app.findings import Category, Finding, FindingStatus, Severity
 from app.llm.models import CallRecord, CallStatus, Task
 from evaluation.dataset import load_dataset
-from evaluation.report import evaluate, to_markdown
+from evaluation.report import embed, evaluate, to_markdown
 from evaluation.runner import FileRecord
 
 LABELS = [
@@ -139,3 +139,18 @@ def test_verification_shows_whether_the_verifier_disputed_the_right_findings(
     assert result.scorecard.overall.precision == 0.5
     assert result.verification.precision_if_hidden == 1.0
     assert "| E-nvidia+local | 1 | 1 | 1 | 1 | 0.50 | 1.00 |" in to_markdown(dataset, [result])
+
+
+def test_embedded_tables_are_replaced_and_everything_else_is_kept() -> None:
+    document = (
+        "Intro.\n\n<!-- TABLE:models -->\nold table\n<!-- /TABLE -->\n\nText.\n"
+        "<!-- TABLE:cwe -->\n<!-- /TABLE -->\n"
+    )
+
+    updated = embed(document, {"models": "| new |\n", "cwe": "| cwe |"})
+
+    assert updated == (
+        "Intro.\n\n<!-- TABLE:models -->\n| new |\n<!-- /TABLE -->\n\nText.\n"
+        "<!-- TABLE:cwe -->\n| cwe |\n<!-- /TABLE -->\n"
+    )
+    assert embed(updated, {"models": "| new |", "cwe": "| cwe |"}) == updated

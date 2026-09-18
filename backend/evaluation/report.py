@@ -10,6 +10,7 @@ the model finding nothing.
 """
 
 import json
+import re
 import statistics
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Sequence
@@ -265,28 +266,59 @@ def to_json(results: Sequence[VariantResult]) -> dict[str, Any]:
     return out
 
 
-def to_markdown(dataset: Dataset, results: Sequence[VariantResult]) -> str:
-    """The tables quoted in ``docs/evaluation.md``."""
-    pinned = _pick(results, PINNED)
-    routed = _pick(results, ROUTED)
+TITLES = {
+    "pinned": "Ablation with one reviewer (NVIDIA, review task)",
+    "routed": "Ablation as routed (every provider, review and style)",
+    "categories": "Per category (F1, with precision / recall)",
+    "cwe": "Security recall per CWE",
+    "models": "Model comparison (review task only, one provider each)",
+    "verification": "Cross-model verification",
+    "cost": "Cost and routing",
+    "labels": "Labels found",
+}
+
+
+def tables(dataset: Dataset, results: Sequence[VariantResult]) -> dict[str, str]:
+    """Every table, by name, as ``docs/evaluation.md`` embeds them."""
     ablations = _pick(results, [*PINNED, *ROUTED[1:]])
-    models = [r for r in results if r.variant.startswith("F-")]
-    sections = [
-        f"Dataset: {dataset.name} v{dataset.version}, {len(dataset.files)} files "
-        f"({len(dataset.clean_files)} clean), {len(dataset.labels)} labels.",
-        "## Ablation with one reviewer (NVIDIA, review task)\n\n" + _headline(pinned, pinned=True),
-        "## Ablation as routed (every provider, review and style)\n\n" + _headline(routed),
-        "## Per category (F1, with precision / recall)\n\n" + _categories(ablations),
-        "## Security recall per CWE\n\n" + _cwe(dataset, ablations),
-        "## Model comparison (review task only, one provider each)\n\n" + _models(models)
-        if models
-        else "",
-        "## Cross-model verification\n\n" + _verification(results),
-        "## Cost and routing\n\n" + _cost(results),
-        "## Labels found\n\n✓ found, · missed, — file not completed by that configuration.\n\n"
+    return {
+        "pinned": _headline(_pick(results, PINNED), pinned=True),
+        "routed": _headline(_pick(results, ROUTED)),
+        "categories": _categories(ablations),
+        "cwe": _cwe(dataset, ablations),
+        "models": _models([r for r in results if r.variant.startswith("F-")]),
+        "verification": _verification(results),
+        "cost": _cost(results),
+        "labels": "✓ found, · missed, — file not completed by that configuration.\n\n"
         + _labels(dataset, results),
-    ]
-    return "\n\n".join(section for section in sections if section) + "\n"
+    }
+
+
+def to_markdown(dataset: Dataset, results: Sequence[VariantResult]) -> str:
+    """Every table, with headings, for ``tables.md``."""
+    header = (
+        f"Dataset: {dataset.name} v{dataset.version}, {len(dataset.files)} files "
+        f"({len(dataset.clean_files)} clean), {len(dataset.labels)} labels."
+    )
+    sections = [f"## {TITLES[name]}\n\n{table}" for name, table in tables(dataset, results).items()]
+    return "\n\n".join([header, *sections]) + "\n"
+
+
+_EMBEDDED = re.compile(r"<!-- TABLE:(?P<name>[a-z-]+) -->\n.*?<!-- /TABLE -->", re.DOTALL)
+
+
+def embed(document: str, named: dict[str, str]) -> str:
+    """Replace each ``<!-- TABLE:name -->`` ... ``<!-- /TABLE -->`` block with its table.
+
+    Raises:
+        KeyError: If the document names a table that does not exist.
+    """
+
+    def fill(match: re.Match[str]) -> str:
+        name = match.group("name")
+        return f"<!-- TABLE:{name} -->\n{named[name].rstrip()}\n<!-- /TABLE -->"
+
+    return _EMBEDDED.sub(fill, document)
 
 
 def pct(value: float | None) -> str:

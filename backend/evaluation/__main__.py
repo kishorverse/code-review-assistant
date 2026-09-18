@@ -11,7 +11,7 @@ from app.log import configure_logging
 from app.review.merge import is_reported
 from app.review.planner import DEFAULT_MIN_CONFIDENCE
 from evaluation import agreement, latency, report, routing_sim
-from evaluation.dataset import load_dataset
+from evaluation.dataset import REPO_ROOT, load_dataset
 from evaluation.runner import (
     RUNS_DIR,
     RunKind,
@@ -124,6 +124,22 @@ def score_command() -> None:
             f"({result.complete_files}/{result.files} files)"
         )
     console.print(f"-> {report.RESULTS_DIR}")
+
+
+@app.command(name="docs")
+def docs_command() -> None:
+    """Write the current tables into docs/evaluation.md, between its TABLE markers."""
+    dataset = load_dataset()
+    named = report.tables(dataset, report.evaluate(dataset))
+    for name in ("routing", "latency"):
+        path = report.RESULTS_DIR / f"{name}.md"
+        if path.exists():
+            named[name] = path.read_text(encoding="utf-8")
+    document = REPO_ROOT / "docs" / "evaluation.md"
+    document.write_text(
+        report.embed(document.read_text(encoding="utf-8"), named), encoding="utf-8", newline="\n"
+    )
+    console.print(f"-> {document}")
 
 
 @app.command()
