@@ -158,3 +158,28 @@ async def test_models_never_see_detected_secrets(make_project: ProjectFactory) -
     assert prompts
     assert all(value not in prompt for prompt in prompts)
     assert any('API_KEY = "<REDACTED_SECRET_1>"' in prompt for prompt in prompts)
+
+
+async def test_findings_can_be_cross_checked_without_reviewing_first(
+    make_project: ProjectFactory,
+) -> None:
+    root, files = make_project({"app/db.py": DB_MODULE})
+    router = mock_router(MockProvider("gemini", respond=verifier, external=True))
+    session = ReviewSession(
+        router, ReviewOptions(depth=Depth.STANDARD, allow_external=True), CollectingSink()
+    )
+    earlier = make_finding(
+        start_line=5,
+        category=Category.PERFORMANCE,
+        severity=Severity.HIGH,
+        title=FETCH_ALL["title"],
+        evidence=FETCH_ALL["evidence"],
+        rule_id=None,
+        sources=["nvidia"],
+        confidence=0.8,
+    )
+
+    await session.load_sources(files, static_result(), root)
+    [checked] = await session.verify([earlier])
+
+    assert checked.verified_by == ["gemini"]
