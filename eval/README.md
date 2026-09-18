@@ -11,9 +11,10 @@ eval/
   results/
     runs/         every finding and model call, one JSON line per file and run
     scores.json   metrics per configuration
-    tables.md     the tables quoted in docs/evaluation.md
+    tables.md     every table; docs/evaluation.md embeds them
     routing.md    router simulation
     latency.md    end-to-end timings
+    human_ratings.md  rating summary, once ratings are in
   human_eval/
     rating_sheet.csv   blind sample of AI suggestions to rate
     sample_key.json    which model wrote each sampled item (do not show raters)
@@ -46,23 +47,35 @@ From `backend/`, with keys in `backend/.env` for the model runs:
 ```bash
 uv run python -m evaluation check                      # validate labels against files
 uv run python -m evaluation run static                 # A
+
+# The ablation with one reviewer
+uv run python -m evaluation run llm-only --provider nvidia --rounds 10          # B-nvidia
+uv run python -m evaluation run model --provider nvidia --rounds 10             # D-nvidia (F-nvidia)
+uv run python -m evaluation run verify --base model-nvidia --provider gemini    # E-nvidia+gemini
+
+# The model comparison: one run per provider
+uv run python -m evaluation run model --provider gemini --concurrency 1 --rounds 30
+
+# The product as routed across every provider, with style review
 uv run python -m evaluation run llm-only               # B
 uv run python -m evaluation run hybrid                 # D and E
-uv run python -m evaluation run model --provider nvidia --rounds 10    # F, one per provider
+
 uv run python -m evaluation score                      # scores.json and tables.md
+uv run python -m evaluation docs                       # update the tables in docs/evaluation.md
 uv run python -m evaluation routing                    # router simulation, no keys needed
 uv run python -m evaluation latency                    # end-to-end timings
+uv run python -m evaluation sample                     # blind rating sheet
 ```
 
 Runs resume: files already complete are skipped, and failed files are retried. `--rounds` waits out
-rate-limit pauses for single-provider runs. `--fresh` starts over. Scoring needs no keys, so anyone can
-re-score the committed runs.
+rate-limit pauses for single-provider runs, which have no fallback. `--fresh` starts over. Scoring needs
+no keys, so anyone can re-score the committed runs.
 
 ## Human ratings
 
-`human_eval/rating_sheet.csv` lists AI suggestions sampled from configuration E, without the model's
-name. Each rater copies it to `human_eval/ratings_<name>.csv` and scores every item from 1 (poor) to 5
-(excellent) on:
+`human_eval/rating_sheet.csv` lists AI suggestions sampled evenly from the four single-model runs,
+shuffled, without the model's name. Each rater copies it to `human_eval/ratings_<name>.csv` and scores
+every item from 1 (poor) to 5 (excellent) on:
 
 - **correctness**: the issue is real and the explanation is right;
 - **usefulness**: acting on it would improve the code;
