@@ -2,15 +2,21 @@ from pathlib import Path
 
 import pytest
 
-from app.static.python_version import DEFAULT_MINOR, declared_python_minor
+from app.static.declared import (
+    DEFAULT_LINE_LENGTH,
+    DEFAULT_MINOR,
+    MAX_LINE_LENGTH,
+    Declared,
+    declared_settings,
+)
 
 
-def declare(tmp_path: Path, files: dict[str, str]) -> int:
+def declare(tmp_path: Path, files: dict[str, str]) -> Declared:
     for name, content in files.items():
         path = tmp_path / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
-    return declared_python_minor(tmp_path, sorted(files))
+    return declared_settings(tmp_path, sorted(files))
 
 
 @pytest.mark.parametrize(
@@ -28,13 +34,13 @@ def declare(tmp_path: Path, files: dict[str, str]) -> int:
 def test_reads_the_lower_bound_of_requires_python(tmp_path: Path, spec: str, minor: int) -> None:
     pyproject = f'[project]\nrequires-python = "{spec}"\n'
 
-    assert declare(tmp_path, {"pyproject.toml": pyproject}) == minor
+    assert declare(tmp_path, {"pyproject.toml": pyproject}).python_minor == minor
 
 
 def test_ruffs_own_target_wins_over_requires_python(tmp_path: Path) -> None:
     pyproject = '[project]\nrequires-python = ">=3.9"\n\n[tool.ruff]\ntarget-version = "py312"\n'
 
-    assert declare(tmp_path, {"pyproject.toml": pyproject}) == 12
+    assert declare(tmp_path, {"pyproject.toml": pyproject}).python_minor == 12
 
 
 def test_the_top_most_pyproject_is_used(tmp_path: Path) -> None:
@@ -43,7 +49,27 @@ def test_the_top_most_pyproject_is_used(tmp_path: Path) -> None:
         "vendor/old/pyproject.toml": '[project]\nrequires-python = ">=3.8"\n',
     }
 
-    assert declare(tmp_path, files) == 12
+    assert declare(tmp_path, files).python_minor == 12
+
+
+@pytest.mark.parametrize(
+    ("pyproject", "length"),
+    [
+        ("[tool.ruff]\nline-length = 100\n", 100),
+        ("[tool.black]\nline-length = 88\n", 88),
+        (
+            "[tool.ruff]\nline-length = 100\n[tool.ruff.lint.pycodestyle]\nmax-line-length = 110\n",
+            110,
+        ),
+        ("[tool.ruff]\nline-length = 72\n", 72),
+        ("[tool.ruff]\nline-length = 10000\n", MAX_LINE_LENGTH),
+        ("[tool.ruff]\nline-length = true\n", DEFAULT_LINE_LENGTH),
+        ('[tool.ruff]\nline-length = "100"\n', DEFAULT_LINE_LENGTH),
+    ],
+    ids=["ruff", "black", "pycodestyle-wins", "stricter", "capped", "bool", "string"],
+)
+def test_reads_the_declared_line_length(tmp_path: Path, pyproject: str, length: int) -> None:
+    assert declare(tmp_path, {"pyproject.toml": pyproject}).line_length == length
 
 
 @pytest.mark.parametrize(
@@ -58,7 +84,7 @@ def test_the_top_most_pyproject_is_used(tmp_path: Path) -> None:
     ],
     ids=["none", "invalid-toml", "not-a-string", "no-lower-bound", "unknown-target", "odd-types"],
 )
-def test_falls_back_to_the_default_when_nothing_usable_is_declared(
+def test_falls_back_to_the_defaults_when_nothing_usable_is_declared(
     tmp_path: Path, files: dict[str, str]
 ) -> None:
-    assert declare(tmp_path, files) == DEFAULT_MINOR
+    assert declare(tmp_path, files) == Declared(DEFAULT_MINOR, DEFAULT_LINE_LENGTH)

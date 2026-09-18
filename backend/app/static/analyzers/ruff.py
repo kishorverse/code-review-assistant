@@ -1,8 +1,8 @@
 """Ruff: PEP 8 style, likely bugs, simplifications and performance anti-patterns in Python.
 
 Ruff runs with ``--isolated``, so ``pyproject.toml`` or ``ruff.toml`` files in
-an upload cannot change the rule set. The one setting taken from the upload is
-the Python version it declares, because which names are builtins depends on it.
+an upload cannot change the rule set. The Python version and line length the
+upload declares are respected; see :mod:`app.static.declared`.
 Security rules (``S``) are left to Bandit, which reports CWE ids and confidence.
 """
 
@@ -13,13 +13,11 @@ from pathlib import Path
 from app.errors import AnalyzerError
 from app.findings import Category, Finding, Severity, shorten_title
 from app.static.base import AnalysisTarget, AnalyzerResult, relative_to_root, run_tool
+from app.static.declared import declared_settings
 from app.static.process import python_tool
-from app.static.python_version import declared_python_minor
 
 NAME = "ruff"
 SELECTED_RULES = ("E", "W", "F", "B", "N", "UP", "SIM", "PERF", "C4", "RET")
-LINE_LENGTH = 79
-"""PEP 8's maximum line length."""
 
 # Checked longest prefix first, so specific codes win over their family.
 _CLASSIFICATION: dict[str, tuple[Category, Severity]] = {
@@ -54,7 +52,7 @@ class RuffAnalyzer:
 
     async def analyze(self, target: AnalysisTarget) -> AnalyzerResult:
         """Run Ruff in isolated mode and normalize its JSON output."""
-        minor = declared_python_minor(target.root, target.files)
+        declared = declared_settings(target.root, target.files)
         result = await run_tool(
             target,
             python_tool(
@@ -69,9 +67,9 @@ class RuffAnalyzer:
                 "--select",
                 ",".join(SELECTED_RULES),
                 "--line-length",
-                str(LINE_LENGTH),
+                str(declared.line_length),
                 "--target-version",
-                f"py3{minor}",
+                f"py3{declared.python_minor}",
                 str(target.root),
             ),
         )

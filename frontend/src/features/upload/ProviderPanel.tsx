@@ -35,7 +35,7 @@ export function ProviderPanel({
                   provider.state === 'closed' ? 'bg-low' : 'bg-medium'
                 }`}
               />
-              <span className="font-medium">{provider.name}</span>
+              <span className="font-medium whitespace-nowrap">{provider.name}</span>
               <code className="path text-muted truncate">{provider.model}</code>
               <span className="text-muted ml-auto">
                 {provider.external ? 'hosted' : 'on this machine'}

@@ -1,5 +1,6 @@
 import type { FileEntry, SkippedFile } from '@/lib/api'
 import { SEVERITY_DOT } from '@/lib/severity'
+import { commonFolder } from '@/lib/text'
 
 /** The scan's files, with how many findings each has. */
 export function FileList({
@@ -13,9 +14,12 @@ export function FileList({
   selected: string | null
   onSelect: (path: string) => void
 }) {
+  const folder = commonFolder(files.map((file) => file.path))
   return (
     <nav className="panel max-h-48 space-y-2 overflow-y-auto p-3 lg:max-h-none" aria-label="Files">
-      <h2 className="text-muted text-[13px] font-medium">Files</h2>
+      <h2 className="text-muted text-[13px] font-medium">
+        Files{folder && <span className="path font-normal"> in {folder}</span>}
+      </h2>
       <ul className="space-y-0.5">
         {files.map((file) => (
           <li key={file.path}>
@@ -26,9 +30,9 @@ export function FileList({
                 selected === file.path ? 'bg-brand-soft' : 'hover:bg-ink'
               }`}
             >
-              <FilePath path={file.path} />
+              <FilePath path={file.path} shown={file.path.slice(folder.length)} />
               {file.findings > 0 && (
-                <span className="text-muted ml-auto flex items-center gap-1 tabular-nums">
+                <span className="text-muted ml-auto flex shrink-0 items-center gap-1 tabular-nums">
                   {file.highest_severity && (
                     <span
                       aria-hidden
@@ -59,12 +63,12 @@ export function FileList({
 }
 
 /** The folder truncates first, so the file name itself stays readable. */
-function FilePath({ path }: { path: string }) {
-  const cut = path.lastIndexOf('/') + 1
+function FilePath({ path, shown }: { path: string; shown: string }) {
+  const cut = shown.lastIndexOf('/') + 1
   return (
     <span className="path flex min-w-0" title={path}>
-      {cut > 0 && <span className="text-muted truncate">{path.slice(0, cut)}</span>}
-      <span className="shrink-0">{path.slice(cut)}</span>
+      {cut > 0 && <span className="text-muted truncate">{shown.slice(0, cut)}</span>}
+      <span className="truncate [flex-shrink:0.01]">{shown.slice(cut)}</span>
     </span>
   )
 }

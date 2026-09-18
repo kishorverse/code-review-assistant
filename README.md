@@ -1,31 +1,52 @@
 # Margin — AI Code Review Assistant
 
-> Static analyzers find it. Three LLMs check it. You decide what changes.
+> Static analyzers find it. Models check it. You decide what changes.
 
-Margin reviews a single source file or a zipped project in two passes.
+Margin reviews a source file or a whole project by combining **static analysis** with **review by
+hosted LLMs**. Analyzers find the issues a rule can express; models judge those findings and add the
+ones no rule can, such as a discount applied twice or a cache that evicts its newest entry. Every AI
+claim cites real lines and quotes real code, says which model made it and which confirmed it, and you
+accept or reject it.
 
-1. **Static analysis.** Deterministic analyzers (Ruff, Bandit, mypy, Radon, Vulture, Lizard, detect-secrets, Opengrep) find concrete bugs, security issues, style deviations and complexity hotspots.
-2. **LLM review.** Three hosted LLMs (Google Gemini, Meta Llama via Hugging Face, and an open model on NVIDIA NIM) take the static findings as structured context. They confirm or dismiss each finding, add semantic issues the analyzers can't see, and back every point with a rationale and the exact evidence from the code.
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kishorverse/code-review-assistant/blob/main/notebooks/margin_demo.ipynb)
 
-A router that knows each provider's rate limits sends every task to the best-suited model and falls back cleanly when a quota runs out. A verifier checks evidence and runs a second model on serious findings, so false positives are filtered out before you see them.
+![The results workspace: files, code with severity marks, and finding cards with provenance](docs/images/results.png)
 
-> **Status:** in active development. Safe upload handling, structure-aware chunking, static analysis, the rate-limit-aware LLM router, hybrid LLM review with cross-model verification, the web API, the web UI, HTML, JSON and SARIF reports, and the evaluation work today; delivery (CI action, notebook, final docs) is next.
+## What it does
 
-## Planned features
+- **Bugs and security.** Common bug patterns and vulnerabilities, with CWE ids: injection, unsafe
+  deserialization, path traversal, SSRF, weak cryptography and randomness, hardcoded secrets, and more.
+- **Style.** Deviations from PEP 8 (Ruff), at the line length the project declares.
+- **Optimization.** Performance and maintainability suggestions, backed by complexity metrics.
+- **Grounded AI review.** Static findings go to the models as structured context; a model's answer is
+  kept only if the lines and quoted code it cites exist. Serious AI findings are cross-checked by a
+  model from another provider.
+- **Built for free tiers.** A router spreads calls over Google Gemini, NVIDIA NIM, Hugging Face and a
+  local model, stays under each one's limits, and falls back when a quota runs out or a provider is
+  down.
+- **Three ways to use it.** A web UI with live progress, a CLI, and a GitHub Action that publishes SARIF
+  to code scanning. Reports in HTML, JSON and SARIF 2.1.0, with a quality score and its formula.
+- **Private by default.** Code goes to hosted models only with explicit consent, detected secrets are
+  masked first, nothing uploaded is ever executed, and uploads are deleted after 24 hours.
 
-- **Bugs and security:** common bug patterns and vulnerabilities, tagged with CWE ids.
-- **Style:** deviations from established guides (PEP 8 / PEP 257 for Python).
-- **Optimization:** performance and maintainability suggestions driven by complexity metrics.
-- **Hybrid, grounded review:** static findings are passed to the LLMs as structured input, and every LLM finding must cite real lines and quote real code.
-- **Rate-limit-aware routing:** sliding-window rate limits, circuit breakers, role-based provider assignment, fallbacks and a response cache.
-- **Interactive and batch modes:** a web UI with live scan progress, a CLI, and SARIF output for CI/CD.
-- **Privacy:** explicit consent before any code leaves the machine, secret redaction before every LLM call, and automatic deletion of uploads.
-- **Evaluation:** precision/recall/F1, style accuracy, latency and robustness on a labeled dataset.
+## How it works
+
+```
+ upload ─► ingest ─► preprocess ─► static analysis ─► LLM review ─► cross-check ─► summary ─► report
+          safe unzip  tree-sitter,   Ruff · Bandit ·    chunk + static   second model  executive  score,
+          and filters chunks ≤ 500   mypy · Radon ·     context, through on serious    summary    HTML,
+                      lines          Vulture · Lizard · the router       AI findings              JSON,
+                                     detect-secrets ·                                            SARIF
+                                     Opengrep
+```
+
+Details: [design](docs/design.md), [static analysis](docs/static-analysis.md),
+[LLM review](docs/review.md), [routing](docs/routing.md).
 
 ## Evaluation at a glance
 
-On a dataset of 32 modules written for the purpose (55 labeled issues, 10 clean controls), with one
-reviewer model (NVIDIA Nemotron) throughout:
+On 32 modules written for the evaluation (55 labeled issues, 10 clean controls), with one reviewer model
+(NVIDIA Nemotron) throughout:
 
 | Configuration | Precision | Recall | F1 | Semantic issues found |
 |---|---|---|---|---|
@@ -33,160 +54,144 @@ reviewer model (NVIDIA Nemotron) throughout:
 | LLM review only | 0.82 | 0.73 | 0.77 | 22 of 26 |
 | **Hybrid (Margin)** | **0.88** | **0.93** | **0.90** | 22 of 26 |
 
-Static analysis finds every rule-shaped issue and none of the semantic ones; the model finds the semantic
-ones; the hybrid keeps both. The [evaluation report](docs/evaluation.md) covers the model comparison
-(Gemini, gpt-oss, Nemotron and a local model), cross-model verification, style accuracy, a routing
-simulation and latency, with its limitations.
+Static analysis finds every rule-shaped issue and none of the semantic ones; the model finds the
+semantic ones; the hybrid keeps both. Of the models, Gemini 3.5 Flash was the most accurate and
+gpt-oss-120b the fastest; a 4B local model found none of the semantic issues. The
+[evaluation report](docs/evaluation.md) has the full results: model comparison, cross-model
+verification, style accuracy, a routing simulation, latency, and the limitations.
 
-## Architecture at a glance
+Static scans take seconds (the 32-file project in about 4 s); hybrid scans take minutes on free tiers,
+because each model answer takes seconds to tens of seconds.
 
-```
-upload (file / .zip)
-  → ingest        safe unzip, filtering
-  → preprocess    language detection, tree-sitter parsing, chunking (≤ 500 lines)
-  → static        analyzers in parallel, normalized into one Finding schema
-  → context       code + findings + metrics per chunk, secrets redacted
-  → LLM review    router → Gemini / Llama (HF) / NVIDIA NIM
-  → verify        line + evidence checks, dedupe, cross-model verification
-  → report        quality score, HTML / JSON / SARIF
-```
+## Quick start
 
-## Repository layout
+### In the browser
 
-```
-backend/            FastAPI service, analysis pipeline, CLI
-  app/              application package
-  scripts/          developer utilities (e.g. model discovery)
-  tests/            pytest suite
-frontend/           React + TypeScript web interface
-docs/               design and engineering documentation
-.github/workflows/  continuous integration
-```
+Open the [Colab notebook](https://colab.research.google.com/github/kishorverse/code-review-assistant/blob/main/notebooks/margin_demo.ipynb):
+it installs Margin, scans a project, reviews a file with models (or a mock provider without keys),
+shows the report and recomputes the evaluation.
 
-## Development setup
+### On your machine
 
-### Prerequisites
-
-| Tool | Version |
-|---|---|
-| [Python](https://www.python.org/downloads/) | 3.11 or newer (3.12 recommended) |
-| [uv](https://docs.astral.sh/uv/getting-started/installation/) | recent release |
-| [Node.js](https://nodejs.org/) | 22.12 or newer (24 LTS recommended) |
-| Git | any recent version |
-
-### Backend
+Requires [Python](https://www.python.org/downloads/) 3.11+, [uv](https://docs.astral.sh/uv/) and, for
+the web UI, [Node.js](https://nodejs.org/) 22.12+.
 
 ```bash
-cd backend
-cp .env.example .env    # optional for now: the service starts without API keys
+git clone https://github.com/kishorverse/code-review-assistant.git
+cd code-review-assistant/backend
+cp .env.example .env        # add keys to enable LLM review; static analysis needs none
 uv sync
-uv run uvicorn app.main:create_app --factory --reload
+uv run margin scan path/to/project
 ```
 
-The API runs at http://127.0.0.1:8000, with interactive docs at http://127.0.0.1:8000/docs.
-Upload a project and follow the scan:
+Web UI, in two terminals:
 
 ```bash
-curl -F file=@project.zip -F depth=standard -F allow_external=true http://127.0.0.1:8000/api/scans
-curl -N http://127.0.0.1:8000/api/scans/<id>/events            # live progress (server-sent events)
-curl -o report.html "http://127.0.0.1:8000/api/scans/<id>/report?format=html"
+cd backend && uv run uvicorn app.main:create_app --factory      # API on :8000
+cd frontend && npm ci && npm run dev                            # UI on http://localhost:5173
 ```
 
-Uploads and everything derived from them are deleted after `RETENTION_HOURS` (24 by default). See the
-[API reference](docs/api.md).
+Drop a file or a `.zip`, choose a review depth, and decide whether code may go to hosted models. The
+scan page shows the pipeline, each analyzer and each model's calls live, then becomes a workspace: files,
+code with severity marks, and finding cards you can accept or reject. See [Web UI](docs/ui.md).
 
-### Frontend
+![The upload page: drop zone, review depth, and the configured models with the consent box](docs/images/upload.png)
 
-Start the backend first, then:
+No keys? Start the backend with `LLM_MODE=mock` to try everything with canned model answers.
 
-```bash
-cd frontend
-npm ci
-npm run dev
-```
+## Models and keys
 
-Open http://localhost:5173. Requests to `/api` are proxied to the backend. Drop a file or a `.zip`, pick a
-review depth, and decide whether code may go to hosted models. The scan page shows the pipeline, each
-analyzer and each model's calls live, then turns into a workspace: files, code with severity marks in the
-gutter, and finding cards you can accept or reject. See [Web UI](docs/ui.md).
+| Provider | Setting | Get a key |
+|---|---|---|
+| NVIDIA NIM | `NVIDIA_API_KEY`, `NVIDIA_MODEL` | [build.nvidia.com](https://build.nvidia.com) |
+| Google Gemini | `GEMINI_API_KEY`, `GEMINI_MODEL` | [Google AI Studio](https://aistudio.google.com/apikey) |
+| Hugging Face | `HF_TOKEN`, `HF_MODEL_LARGE`, `HF_MODEL_SMALL` | [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) |
+| Local (Ollama) | `LOCAL_MODEL`, `LOCAL_BASE_URL` | none; runs on your machine |
 
-To try it without API keys, start the backend with `LLM_MODE=mock`.
+Keys go in `backend/.env` (every setting is documented in `.env.example`). A provider without its key
+or model id is simply not used. `uv run python scripts/list_models.py` lists the models your keys can
+reach. Which model does what, and why: [model selection](docs/model_selection.md). Rate limits and task
+routing: `backend/config/providers.yaml`.
 
-After changing an endpoint or response model, regenerate the frontend's API types:
+**Privacy.** Code goes to hosted providers only with `--allow-external` (CLI) or the consent box (UI);
+otherwise only a local model or static analysis runs. Secrets that detect-secrets finds are masked
+before any prompt, and the report lists which provider saw which file. Check each provider's terms
+before sending code you may not share.
 
-```bash
-cd backend && uv run python scripts/export_openapi.py
-cd ../frontend && npm run api-types
-```
-
-### LLM providers
-
-Margin uses Google Gemini, Hugging Face Inference Providers and NVIDIA NIM, and optionally a local model served by [Ollama](https://ollama.com). Add the keys to `backend/.env` (links to create each key are in `.env.example`), then list the model ids your keys and local server can use:
+## Command line
 
 ```bash
 cd backend
-uv run python scripts/list_models.py
+uv run margin scan src                                   # static analysis, table of findings
+uv run margin scan src --depth standard --allow-external # add LLM review by hosted models
+uv run margin scan src --depth quick                     # LLM review by a local model only
+uv run margin scan project.zip --format html --output report.html
+uv run margin scan src --format sarif --output margin.sarif
+uv run margin scan . --exclude tests/fixtures --fail-on high
 ```
 
-Put the chosen ids in `.env` (`GEMINI_MODEL`, `HF_MODEL_LARGE`, `HF_MODEL_SMALL`, `NVIDIA_MODEL`, `LOCAL_MODEL`). A provider without its key or model id is simply not used. No keys at all? `LLM_MODE=mock` runs everything offline with canned answers. Rate limits and task routing are in `backend/config/providers.yaml`; see [LLM routing](docs/routing.md).
-
-### Scanning from the command line
-
-```bash
-cd backend
-uv run margin scan path/to/project            # static analysis, table of findings
-uv run margin scan project.zip --format json --output report.json
-uv run margin scan src --fail-on high          # exit code 1 if any high or critical finding
-uv run margin scan src --depth standard --allow-external   # add LLM review by hosted models
-uv run margin scan src --depth quick           # LLM review by a local model only
-uv run margin scan src --format sarif --output margin.sarif   # for GitHub code scanning
-uv run margin scan src --format html --output report.html     # standalone report
-```
-
-The CLI runs Ruff, Bandit, mypy, Radon, Vulture, Lizard and detect-secrets, plus Opengrep when its binary is
-installed ([releases](https://github.com/opengrep/opengrep/releases); set `OPENGREP_PATH` if it is not on `PATH`).
-
-`--depth` adds LLM review: `quick` reviews risky chunks, `standard` reviews every chunk for bugs, security,
-performance and style, and `deep` also cross-checks medium-severity AI findings with a second model. Code
-goes to hosted providers only with `--allow-external`, after detected secrets are masked; otherwise only a
-local model is used. AI findings below `--min-confidence` (default 0.6) are left out of the report.
-
-Every report includes a quality score from 0 to 100 with a letter grade, and the formula that produced it.
-
-Exit codes: `0` success, `1` a finding reached `--fail-on`, `2` the input was rejected, `3` the provider
+`--depth` sets how much the models do: `quick` reviews risky chunks, `standard` reviews every chunk for
+bugs, security, performance and style and cross-checks high and critical AI findings, and `deep` also
+cross-checks medium ones. AI findings below `--min-confidence` (0.6) are left out of the report. Exit
+codes: `0` success, `1` a finding reached `--fail-on`, `2` the input was rejected, `3` the provider
 configuration is invalid.
 
-### Quality checks
+## GitHub Action
 
-These are the same checks CI runs on every pull request.
+[`.github/workflows/margin-review.yml`](.github/workflows/margin-review.yml) runs Margin on this
+repository on every push and pull request and publishes the findings to **Security → Code scanning**.
+Copy it into another repository to do the same there. Static analysis needs no secrets; to add LLM
+review, set the repository variable `MARGIN_DEPTH` and the provider keys as secrets.
 
-```bash
-# backend
-cd backend
-uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest --cov
+## Web API
 
-# frontend
-cd frontend
-npm run format:check && npm run lint && npm run typecheck && npm test && npm run build
+`POST /api/scans` with a file, then follow `GET /api/scans/{id}/events` (server-sent events), and fetch
+findings, files and reports; interactive docs at http://127.0.0.1:8000/docs. See the
+[API reference](docs/api.md).
+
+## Development
+
+```
+backend/            FastAPI service, pipeline, CLI (app/), evaluation harness (evaluation/), tests
+frontend/           React + TypeScript web UI
+eval/               evaluation dataset and results
+notebooks/          Colab demo
+docs/               design and engineering documentation
+.github/workflows/  CI and the Margin review action
 ```
 
-Install the pre-commit hooks once so formatting, linting and secret scanning run before every commit:
+The same checks CI runs on every pull request:
 
 ```bash
-cd backend
-uv run pre-commit install
+cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest --cov
+cd frontend && npm run format:check && npm run lint && npm run typecheck && npm test && npm run build
 ```
+
+Install the pre-commit hooks once with `cd backend && uv run pre-commit install`.
+Conventions are in [coding rules](docs/coding-rules.md) and [tech stack](docs/tech-stack.md).
+
+## Limitations and future work
+
+- **Python first.** JavaScript, TypeScript, Java and Go get parsing, complexity, secret scanning, the
+  custom Opengrep rules and LLM review, but not the full set of Python analyzers.
+- **One chunk at a time.** Models see a chunk with its imports and enclosing signatures, not the whole
+  project, so issues that span files can be missed.
+- **Free tiers shape results.** Quotas run out and providers go down; Margin keeps going with fallbacks,
+  but a scan that fell back to the local model is a shallower review (the report shows who reviewed
+  what).
+- **The evaluation is small and synthetic.** 55 labels in 32 files, labeled by one author; public
+  datasets (BugsInPy, CVEfixes) and real repositories are the next step.
+- **Not yet built:** generating and validating fixes as diffs, PDF reports, learning from reviewers'
+  decisions, a VS Code extension, Docker Compose, and end-to-end browser tests.
 
 ## Documentation
 
-- [Coding rules](docs/coding-rules.md)
-- [Tech stack](docs/tech-stack.md)
-- [Static analysis engine](docs/static-analysis.md): analyzers, finding normalization, and how untrusted code is analyzed safely
-- [LLM routing](docs/routing.md): providers, task routing, rate limits, circuit breakers, caching and the consent gate
-- [LLM review and verification](docs/review.md): depth, secret masking, prompts, grounding, judgements and cross-model checks
-- [Web API](docs/api.md): scans, live events, reviewer decisions, reports, storage and retention
-- [Web UI](docs/ui.md): upload, live scan, results workspace, state, design and accessibility
-- [Evaluation](docs/evaluation.md): dataset, ablations, model comparison, verification, routing and latency; data and harness in [eval/](eval/README.md)
+- [Design](docs/design.md) · [Tech stack](docs/tech-stack.md) · [Coding rules](docs/coding-rules.md)
+- [Static analysis](docs/static-analysis.md) · [LLM review](docs/review.md) · [Routing](docs/routing.md)
+  · [Model selection](docs/model_selection.md)
+- [Web API](docs/api.md) · [Web UI](docs/ui.md)
+- [Evaluation](docs/evaluation.md) · [Evaluation data](eval/README.md)
+- [Licenses](docs/licenses.md)
 
 ## License
 

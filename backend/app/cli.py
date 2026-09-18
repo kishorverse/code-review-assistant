@@ -118,6 +118,13 @@ def scan(
         float,
         typer.Option(min=0.0, max=1.0, help="Leave out AI findings below this confidence."),
     ] = DEFAULT_MIN_CONFIDENCE,
+    exclude: Annotated[
+        list[str] | None,
+        typer.Option(
+            help="Leave out paths matching this glob, relative to the scanned directory "
+            "(repeatable), e.g. --exclude 'tests/fixtures'.",
+        ),
+    ] = None,
 ) -> None:
     """Scan a project with the static analyzers, and optionally LLM review, then print findings."""
     configure_logging("WARNING", "console", stream=sys.stderr)
@@ -130,7 +137,7 @@ def scan(
     with tempfile.TemporaryDirectory(prefix="margin-", ignore_cleanup_errors=True) as temp:
         workspace = ScanStorage(Path(temp)).create(new_scan_id())
         ingest = (
-            directory_ingest(path, settings.limits)
+            directory_ingest(path, settings.limits, exclude or ())
             if path.is_dir()
             else upload_ingest(path, path.name, settings.limits)
         )

@@ -931,7 +931,8 @@
           "symlink",
           "invalid_name",
           "special_file",
-          "unreadable"
+          "unreadable",
+          "excluded"
         ],
         "title": "SkipReason",
         "type": "string"

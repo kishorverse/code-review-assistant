@@ -102,6 +102,18 @@ async def test_the_python_version_the_upload_declares_is_respected(
     assert "F821" in by_rule(result.findings)
 
 
+async def test_the_line_length_the_upload_declares_is_respected(
+    make_target: TargetFactory,
+) -> None:
+    long_line = "VALUE = " + repr("x" * 80) + "\n"
+    pyproject = "[tool.ruff]\nline-length = 100\n"
+    default = make_target({"pkg/app.py": long_line})
+    declared = make_target({"pkg/app.py": long_line, "pyproject.toml": pyproject})
+
+    assert "E501" in by_rule((await RuffAnalyzer().analyze(default)).findings)
+    assert "E501" not in by_rule((await RuffAnalyzer().analyze(declared)).findings)
+
+
 def test_applies_only_to_python_projects(make_target: TargetFactory) -> None:
     assert not RuffAnalyzer().applies_to(make_target({"web/app.js": "let x;\n"}))
 

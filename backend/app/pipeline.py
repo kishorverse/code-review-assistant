@@ -8,7 +8,7 @@ review with and a depth other than static.
 
 import asyncio
 import time
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from functools import partial
@@ -124,9 +124,9 @@ def upload_ingest(upload: Path, filename: str, limits: IngestLimits) -> Ingest:
     return partial(ingest_upload, upload, filename, limits=limits)
 
 
-def directory_ingest(project: Path, limits: IngestLimits) -> Ingest:
-    """Ingest step for a local project directory."""
-    return partial(ingest_directory, project, limits=limits)
+def directory_ingest(project: Path, limits: IngestLimits, exclude: Sequence[str] = ()) -> Ingest:
+    """Ingest step for a local project directory, leaving out paths matching ``exclude``."""
+    return partial(ingest_directory, project, limits=limits, exclude=tuple(exclude))
 
 
 async def _review(
