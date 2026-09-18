@@ -6,7 +6,15 @@ import pytest
 
 from app.config import Settings
 from evaluation.dataset import load_dataset
-from evaluation.runner import FileRecord, RunKind, RunSpec, load_records, run, run_settings
+from evaluation.runner import (
+    FileRecord,
+    RunKind,
+    RunSpec,
+    load_records,
+    run,
+    run_for_variant,
+    run_settings,
+)
 
 SOURCE = "import os\n\n\ndef run(command):\n    os.system(command)\n"
 
@@ -129,3 +137,17 @@ async def test_a_static_run_records_every_file_and_resumes(tmp_path: Path) -> No
     assert any(f.rule_id == "B605" for f in result.variants["A"])
     assert again == first, "complete files are not scanned twice"
     assert len((runs / "static.jsonl").read_text(encoding="utf-8").splitlines()) == 1
+
+
+@pytest.mark.parametrize(
+    ("variant", "run_name"),
+    [
+        ("A", "static"),
+        ("E", "hybrid"),
+        ("B-nvidia", "llm-only-nvidia"),
+        ("F-hf-large", "model-hf-large"),
+        ("E-nvidia+gemini", "verify-model-nvidia-by-gemini"),
+    ],
+)
+def test_each_configuration_maps_back_to_its_run(variant: str, run_name: str) -> None:
+    assert run_for_variant(variant) == run_name

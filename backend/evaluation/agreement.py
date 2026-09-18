@@ -13,7 +13,7 @@ import csv
 import json
 import random
 import statistics
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from itertools import combinations
 from pathlib import Path
@@ -83,19 +83,34 @@ class SampledItem:
     providers: tuple[str, ...]
 
 
-def sample(records: Sequence[FileRecord], variant: str, size: int, seed: int) -> list[SampledItem]:
-    """Pick reported findings that a model wrote, with a suggestion to judge."""
-    candidates = [
-        finding
-        for record in records
-        if record.complete
-        for finding in record.variants.get(variant, [])
-        if is_reported(finding, DEFAULT_MIN_CONFIDENCE)
-        and finding.suggestion
-        and MODEL_SOURCES.intersection(finding.sources)
-    ]
+def sample(
+    configurations: Mapping[str, Sequence[FileRecord]], size: int, seed: int
+) -> list[SampledItem]:
+    """Pick reported findings a model wrote, with a suggestion to judge, evenly per configuration.
+
+    The picks are shuffled together, so the order on the sheet gives no hint of the model.
+
+    Args:
+        configurations: Configuration name to its run's records.
+        size: Items in total.
+        seed: Makes the sample reproducible.
+    """
     # A seeded, reproducible sample; nothing here needs unpredictability.
-    chosen = random.Random(seed).sample(candidates, min(size, len(candidates)))  # noqa: S311
+    rng = random.Random(seed)  # noqa: S311
+    share = max(1, size // max(1, len(configurations)))
+    chosen: list[Finding] = []
+    for variant, records in configurations.items():
+        candidates = [
+            finding
+            for record in records
+            if record.complete
+            for finding in record.variants.get(variant, [])
+            if is_reported(finding, DEFAULT_MIN_CONFIDENCE)
+            and finding.suggestion
+            and MODEL_SOURCES.intersection(finding.sources)
+        ]
+        chosen += rng.sample(candidates, min(share, len(candidates)))
+    rng.shuffle(chosen)
     return [
         SampledItem(
             item=f"S{number:02d}",

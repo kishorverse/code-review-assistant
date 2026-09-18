@@ -154,6 +154,22 @@ class FileRecord(BaseModel):
     error: str | None = None
 
 
+def run_for_variant(variant: str) -> str:
+    """The name of the run that records a configuration, such as ``model-nvidia`` for F-nvidia."""
+    fixed = {"A": "static", "B": "llm-only", "D": "hybrid", "E": "hybrid"}
+    if variant in fixed:
+        return fixed[variant]
+    prefix, _, rest = variant.partition("-")
+    if prefix == "B":
+        return f"llm-only-{rest}"
+    if prefix == "F":
+        return f"model-{rest}"
+    if prefix == "E" and "+" in rest:
+        reviewer, verifier = rest.split("+", 1)
+        return f"verify-model-{reviewer}-by-{verifier}"
+    raise ValueError(f"unknown configuration {variant}")
+
+
 def run_settings(spec: RunSpec, base: Settings) -> Settings:
     """Settings with every provider but the run's own disabled, for model runs."""
     if spec.provider is None:

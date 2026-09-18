@@ -1,17 +1,22 @@
 import csv
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
+from app.findings import Category, Finding, Severity
 from evaluation.agreement import (
     CRITERIA,
     SHEET_COLUMNS,
     cohen_kappa,
     fleiss_kappa,
     read_ratings,
+    sample,
     summarize,
+    write_sheet,
 )
+from evaluation.runner import FileRecord
 
 
 def test_cohen_kappa_matches_the_textbook_example() -> None:
@@ -102,3 +107,52 @@ def test_summary_reports_means_per_model_and_agreement(tmp_path: Path) -> None:
 
 def test_summary_explains_how_to_start_without_ratings(tmp_path: Path) -> None:
     assert "copy rating_sheet.csv" in summarize(tmp_path)
+
+
+def model_record(variant: str, provider: str, count: int) -> FileRecord:
+    findings = [
+        Finding(
+            file_path="a.py",
+            start_line=line,
+            end_line=line,
+            category=Category.PERFORMANCE,
+            severity=Severity.MEDIUM,
+            title=f"Slow loop {line}",
+            message="Quadratic.",
+            suggestion="Use a set.",
+            sources=[provider],
+            confidence=0.9,
+        )
+        for line in range(1, count + 1)
+    ]
+    return FileRecord(
+        run=f"model-{provider}",
+        file="a.py",
+        started_at=datetime(2026, 9, 18, tzinfo=UTC),
+        complete=True,
+        variants={variant: findings},
+        calls=[],
+        stats={},
+        durations_ms={},
+        models={},
+        prompt_versions={},
+    )
+
+
+def test_the_sample_is_even_per_model_and_the_sheet_never_names_one(tmp_path: Path) -> None:
+    configurations = {
+        "F-gemini": [model_record("F-gemini", "gemini", 10)],
+        "F-nvidia": [model_record("F-nvidia", "nvidia", 3)],
+    }
+
+    items = sample(configurations, size=8, seed=1)
+    write_sheet(items, tmp_path)
+
+    providers = [item.providers for item in items]
+    assert (providers.count(("gemini",)), providers.count(("nvidia",))) == (4, 3)
+    assert [item.item for item in items] == [f"S{n:02d}" for n in range(1, 8)]
+    sheet = (tmp_path / "rating_sheet.csv").read_text(encoding="utf-8")
+    assert "gemini" not in sheet
+    assert "nvidia" not in sheet
+    key = json.loads((tmp_path / "sample_key.json").read_text(encoding="utf-8"))
+    assert {entry["providers"][0] for entry in key.values()} == {"gemini", "nvidia"}

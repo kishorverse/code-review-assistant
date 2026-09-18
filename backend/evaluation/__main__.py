@@ -12,7 +12,15 @@ from app.review.merge import is_reported
 from app.review.planner import DEFAULT_MIN_CONFIDENCE
 from evaluation import agreement, latency, report, routing_sim
 from evaluation.dataset import load_dataset
-from evaluation.runner import RUNS_DIR, RunKind, RunSpec, load_records, records_path, run
+from evaluation.runner import (
+    RUNS_DIR,
+    RunKind,
+    RunSpec,
+    load_records,
+    records_path,
+    run,
+    run_for_variant,
+)
 from evaluation.scoring import Prediction, matches
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
@@ -147,14 +155,20 @@ def latency_command(
 
 @app.command(name="sample")
 def sample_command(
-    variant: Annotated[str, typer.Option(help="Configuration to sample from.")] = "E",
-    size: Annotated[int, typer.Option(min=1)] = 30,
+    variants: Annotated[
+        list[str] | None,
+        typer.Option("--variant", help="Configurations to sample from, evenly (repeatable)."),
+    ] = None,
+    size: Annotated[int, typer.Option(min=1)] = 32,
     seed: Annotated[int, typer.Option()] = 2026,
 ) -> None:
     """Write a blind rating sheet of AI suggestions for human raters."""
-    run_name = {"B": "llm-only", "D": "hybrid", "E": "hybrid"}.get(variant, variant)
-    records = load_records(RUNS_DIR / f"{run_name}.jsonl")
-    items = agreement.sample(list(records.values()), variant, size, seed)
+    chosen = variants or ["F-gemini", "F-nvidia", "F-hf-large", "F-local"]
+    configurations = {
+        variant: list(load_records(RUNS_DIR / f"{run_for_variant(variant)}.jsonl").values())
+        for variant in chosen
+    }
+    items = agreement.sample(configurations, size, seed)
     agreement.write_sheet(items)
     console.print(f"{len(items)} items -> {agreement.HUMAN_EVAL_DIR / 'rating_sheet.csv'}")
 
