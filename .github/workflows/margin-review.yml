@@ -56,7 +56,9 @@ jobs:
           install -m 0755 "$RUNNER_TEMP/opengrep" "$HOME/.local/bin/opengrep"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      # The evaluation dataset and the tests contain vulnerable code on purpose.
+      # The evaluation dataset and the tests contain vulnerable code on purpose. CI
+      # configuration is not the product under review, and its pinned checksums look
+      # like secrets to a scanner that, by design, ignores allowlist comments.
       - name: Review the repository
         working-directory: backend
         env:
@@ -72,7 +74,7 @@ jobs:
           consent=()
           if [ "$DEPTH" != "static" ]; then consent=(--allow-external); fi
           uv run margin scan .. --depth "$DEPTH" "${consent[@]}" \
-            --exclude eval --exclude backend/tests --exclude frontend/src/test \
+            --exclude eval --exclude .github --exclude backend/tests --exclude frontend/src/test \
             --format sarif --output "$RUNNER_TEMP/margin.sarif"
 
       - name: Upload to code scanning
