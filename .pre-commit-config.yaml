@@ -1,5 +1,10 @@
 # Install once from backend/:  uv run pre-commit install
 # Run on everything:            uv run pre-commit run --all-files
+#
+# eval/datasets/ holds code with deliberately injected bugs, style issues and a
+# fake secret for the evaluation; linters must not "fix" them.
+# eval/results/ and eval/human_eval/ are generated data full of finding ids, which
+# are hashes and look like secrets to a scanner.
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
@@ -22,11 +27,13 @@ repos:
     hooks:
       - id: ruff-check
         args: ["--fix"]
+        exclude: ^eval/datasets/
       - id: ruff-format
+        exclude: ^eval/datasets/
 
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
     hooks:
       - id: detect-secrets
         args: ["--baseline", ".secrets.baseline"]
-        exclude: (package-lock\.json|uv\.lock)$
+        exclude: (package-lock\.json$|uv\.lock$|^eval/(datasets|results|human_eval)/)

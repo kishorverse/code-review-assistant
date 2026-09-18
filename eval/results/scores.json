@@ -1,0 +1,2873 @@
+{
+  "A": {
+    "run": "static",
+    "files": 32,
+    "complete_files": 32,
+    "models": {},
+    "overall": {
+      "correct_predictions": 31,
+      "predictions": 33,
+      "found_labels": 29,
+      "labels": 55,
+      "precision": 0.9393939393939394,
+      "recall": 0.5272727272727272,
+      "f1": 0.6754320060105183
+    },
+    "model_findings": {
+      "correct_predictions": 0,
+      "predictions": 0,
+      "found_labels": 0,
+      "labels": 55,
+      "precision": null,
+      "recall": 0.0,
+      "f1": null
+    },
+    "location_only": {
+      "correct_predictions": 31,
+      "predictions": 33,
+      "found_labels": 29,
+      "labels": 55,
+      "precision": 0.9393939393939394,
+      "recall": 0.5272727272727272,
+      "f1": 0.6754320060105183
+    },
+    "macro_f1": 0.8213208152784465,
+    "by_category": {
+      "bug": {
+        "correct_predictions": 8,
+        "predictions": 8,
+        "found_labels": 8,
+        "labels": 23,
+        "precision": 1.0,
+        "recall": 0.34782608695652173,
+        "f1": 0.5161290322580645
+      },
+      "maintainability": {
+        "correct_predictions": 2,
+        "predictions": 2,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "performance": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 0,
+        "labels": 7,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "security": {
+        "correct_predictions": 14,
+        "predictions": 16,
+        "found_labels": 12,
+        "labels": 15,
+        "precision": 0.875,
+        "recall": 0.8,
+        "f1": 0.8358208955223881
+      },
+      "style": {
+        "correct_predictions": 7,
+        "predictions": 7,
+        "found_labels": 7,
+        "labels": 8,
+        "precision": 1.0,
+        "recall": 0.875,
+        "f1": 0.9333333333333333
+      }
+    },
+    "recall_by_detection": {
+      "static": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 29,
+        "labels": 29,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "semantic": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 0,
+        "labels": 26,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      }
+    },
+    "recall_by_cwe": {
+      "CWE-208": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 0,
+        "labels": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "CWE-22": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 2,
+        "precision": null,
+        "recall": 0.5,
+        "f1": null
+      },
+      "CWE-295": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-330": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-400": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-502": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-78": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-79": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-798": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-89": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-916": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-918": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 0,
+        "labels": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "CWE-95": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      }
+    },
+    "clean_file_findings": 2,
+    "found": [
+      "auth_tokens/hardcoded-key",
+      "auth_tokens/weak-random",
+      "backup_tool/shell-injection",
+      "backup_tool/tar-traversal",
+      "billing/cents-type",
+      "config_loader/unsafe-pickle",
+      "config_loader/unsafe-yaml",
+      "csv_export/return-in-finally",
+      "csv_export/unclosed-file",
+      "inventory/is-literal",
+      "inventory/mutable-default",
+      "legacy_helpers/class-name",
+      "legacy_helpers/function-name",
+      "legacy_helpers/lambda-assignment",
+      "legacy_helpers/long-line",
+      "legacy_helpers/multiple-imports",
+      "legacy_helpers/none-comparison",
+      "legacy_helpers/two-statements",
+      "legacy_helpers/unused-import",
+      "notifications/not-awaited",
+      "password_store/fast-hash",
+      "report_renderer/autoescape-off",
+      "report_renderer/eval",
+      "retry/bare-except",
+      "shipping/optional-rate",
+      "upload_manifest/syntax-error",
+      "user_repository/sql-injection",
+      "webhook_client/no-timeout",
+      "webhook_client/tls-disabled"
+    ],
+    "calls": {},
+    "latency_ms_p50_p95": {},
+    "tokens_in_out": [
+      0,
+      0
+    ],
+    "file_seconds_p50_p95": [
+      6.797,
+      10.04705
+    ],
+    "discarded": 0,
+    "tasks_failed": 0,
+    "verification": null
+  },
+  "B-nvidia": {
+    "run": "llm-only-nvidia",
+    "files": 32,
+    "complete_files": 32,
+    "models": {
+      "nvidia": "nvidia/nemotron-3-super-120b-a12b"
+    },
+    "overall": {
+      "correct_predictions": 41,
+      "predictions": 50,
+      "found_labels": 40,
+      "labels": 55,
+      "precision": 0.82,
+      "recall": 0.7272727272727273,
+      "f1": 0.7708578143360751
+    },
+    "model_findings": {
+      "correct_predictions": 41,
+      "predictions": 50,
+      "found_labels": 40,
+      "labels": 55,
+      "precision": 0.82,
+      "recall": 0.7272727272727273,
+      "f1": 0.7708578143360751
+    },
+    "location_only": {
+      "correct_predictions": 46,
+      "predictions": 50,
+      "found_labels": 43,
+      "labels": 55,
+      "precision": 0.92,
+      "recall": 0.7818181818181819,
+      "f1": 0.8452991452991453
+    },
+    "macro_f1": 0.882585360283202,
+    "by_category": {
+      "bug": {
+        "correct_predictions": 20,
+        "predictions": 27,
+        "found_labels": 19,
+        "labels": 23,
+        "precision": 0.7407407407407407,
+        "recall": 0.8260869565217391,
+        "f1": 0.7810894141829393
+      },
+      "maintainability": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 0,
+        "labels": 2,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "performance": {
+        "correct_predictions": 7,
+        "predictions": 8,
+        "found_labels": 7,
+        "labels": 7,
+        "precision": 0.875,
+        "recall": 1.0,
+        "f1": 0.9333333333333333
+      },
+      "security": {
+        "correct_predictions": 14,
+        "predictions": 15,
+        "found_labels": 14,
+        "labels": 15,
+        "precision": 0.9333333333333333,
+        "recall": 0.9333333333333333,
+        "f1": 0.9333333333333333
+      },
+      "style": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 0,
+        "labels": 8,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      }
+    },
+    "recall_by_detection": {
+      "static": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 18,
+        "labels": 29,
+        "precision": null,
+        "recall": 0.6206896551724138,
+        "f1": null
+      },
+      "semantic": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 22,
+        "labels": 26,
+        "precision": null,
+        "recall": 0.8461538461538461,
+        "f1": null
+      }
+    },
+    "recall_by_cwe": {
+      "CWE-208": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-22": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-295": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-330": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-400": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 0,
+        "labels": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "CWE-502": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-78": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-79": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-798": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-89": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-916": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-918": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-95": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      }
+    },
+    "clean_file_findings": 3,
+    "found": [
+      "auth_tokens/hardcoded-key",
+      "auth_tokens/timing-compare",
+      "auth_tokens/weak-random",
+      "backup_tool/shell-injection",
+      "backup_tool/tar-traversal",
+      "billing/cents-type",
+      "billing/double-discount",
+      "billing/empty-average",
+      "config_loader/shared-defaults",
+      "config_loader/unsafe-pickle",
+      "config_loader/unsafe-yaml",
+      "date_ranges/end-excluded",
+      "date_ranges/naive-now",
+      "file_server/path-traversal",
+      "inventory/is-literal",
+      "inventory/mutable-default",
+      "inventory/reorder-boundary",
+      "log_scanner/compile-in-loop",
+      "log_scanner/read-whole-file",
+      "notifications/blocking-sleep",
+      "notifications/not-awaited",
+      "page_cache/evicts-newest",
+      "page_cache/get-not-recent",
+      "page_cache/mutate-while-iterating",
+      "password_store/fast-hash",
+      "payment_matching/count-in-loop",
+      "payment_matching/nested-join",
+      "report_renderer/autoescape-off",
+      "report_renderer/eval",
+      "retry/bare-except",
+      "retry/no-increment",
+      "search_index/list-membership",
+      "search_index/quadratic-unique",
+      "shipping/missing-region",
+      "shipping/optional-rate",
+      "upload_manifest/syntax-error",
+      "user_repository/page-offset",
+      "user_repository/sql-injection",
+      "webhook_client/ssrf",
+      "webhook_client/tls-disabled"
+    ],
+    "calls": {
+      "nvidia": {
+        "ok": 32
+      }
+    },
+    "latency_ms_p50_p95": {
+      "nvidia": [
+        32382,
+        67534
+      ]
+    },
+    "tokens_in_out": [
+      44747,
+      88876
+    ],
+    "file_seconds_p50_p95": [
+      36.2885,
+      71.5279
+    ],
+    "discarded": 6,
+    "tasks_failed": 0,
+    "verification": null
+  },
+  "F-nvidia": {
+    "run": "model-nvidia",
+    "files": 32,
+    "complete_files": 32,
+    "models": {
+      "nvidia": "nvidia/nemotron-3-super-120b-a12b"
+    },
+    "overall": {
+      "correct_predictions": 57,
+      "predictions": 65,
+      "found_labels": 51,
+      "labels": 55,
+      "precision": 0.8769230769230769,
+      "recall": 0.9272727272727272,
+      "f1": 0.9013953488372093
+    },
+    "model_findings": {
+      "correct_predictions": 45,
+      "predictions": 53,
+      "found_labels": 39,
+      "labels": 55,
+      "precision": 0.8490566037735849,
+      "recall": 0.7090909090909091,
+      "f1": 0.7727873183619552
+    },
+    "location_only": {
+      "correct_predictions": 62,
+      "predictions": 65,
+      "found_labels": 52,
+      "labels": 55,
+      "precision": 0.9538461538461539,
+      "recall": 0.9454545454545454,
+      "f1": 0.9496318114874817
+    },
+    "macro_f1": 0.9303596833984571,
+    "by_category": {
+      "bug": {
+        "correct_predictions": 23,
+        "predictions": 29,
+        "found_labels": 20,
+        "labels": 23,
+        "precision": 0.7931034482758621,
+        "recall": 0.8695652173913043,
+        "f1": 0.8295761947700633
+      },
+      "maintainability": {
+        "correct_predictions": 2,
+        "predictions": 2,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "performance": {
+        "correct_predictions": 8,
+        "predictions": 10,
+        "found_labels": 7,
+        "labels": 7,
+        "precision": 0.8,
+        "recall": 1.0,
+        "f1": 0.888888888888889
+      },
+      "security": {
+        "correct_predictions": 17,
+        "predictions": 17,
+        "found_labels": 15,
+        "labels": 15,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "style": {
+        "correct_predictions": 7,
+        "predictions": 7,
+        "found_labels": 7,
+        "labels": 8,
+        "precision": 1.0,
+        "recall": 0.875,
+        "f1": 0.9333333333333333
+      }
+    },
+    "recall_by_detection": {
+      "static": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 29,
+        "labels": 29,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "semantic": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 22,
+        "labels": 26,
+        "precision": null,
+        "recall": 0.8461538461538461,
+        "f1": null
+      }
+    },
+    "recall_by_cwe": {
+      "CWE-208": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-22": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-295": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-330": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-400": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-502": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-78": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-79": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-798": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-89": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-916": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-918": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-95": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      }
+    },
+    "clean_file_findings": 2,
+    "found": [
+      "auth_tokens/hardcoded-key",
+      "auth_tokens/timing-compare",
+      "auth_tokens/weak-random",
+      "backup_tool/shell-injection",
+      "backup_tool/tar-traversal",
+      "billing/cents-type",
+      "billing/double-discount",
+      "billing/empty-average",
+      "config_loader/unsafe-pickle",
+      "config_loader/unsafe-yaml",
+      "csv_export/return-in-finally",
+      "csv_export/unclosed-file",
+      "date_ranges/end-excluded",
+      "date_ranges/naive-now",
+      "file_server/path-traversal",
+      "inventory/is-literal",
+      "inventory/mutable-default",
+      "inventory/reorder-boundary",
+      "latency_stats/median-unsorted",
+      "latency_stats/percentile-index",
+      "legacy_helpers/class-name",
+      "legacy_helpers/function-name",
+      "legacy_helpers/lambda-assignment",
+      "legacy_helpers/long-line",
+      "legacy_helpers/multiple-imports",
+      "legacy_helpers/none-comparison",
+      "legacy_helpers/two-statements",
+      "legacy_helpers/unused-import",
+      "log_scanner/compile-in-loop",
+      "log_scanner/read-whole-file",
+      "notifications/blocking-sleep",
+      "notifications/not-awaited",
+      "page_cache/evicts-newest",
+      "page_cache/get-not-recent",
+      "page_cache/mutate-while-iterating",
+      "password_store/fast-hash",
+      "payment_matching/count-in-loop",
+      "payment_matching/nested-join",
+      "report_renderer/autoescape-off",
+      "report_renderer/eval",
+      "retry/bare-except",
+      "search_index/list-membership",
+      "search_index/quadratic-unique",
+      "shipping/missing-region",
+      "shipping/optional-rate",
+      "upload_manifest/syntax-error",
+      "user_repository/page-offset",
+      "user_repository/sql-injection",
+      "webhook_client/no-timeout",
+      "webhook_client/ssrf",
+      "webhook_client/tls-disabled"
+    ],
+    "calls": {
+      "nvidia": {
+        "ok": 32
+      }
+    },
+    "latency_ms_p50_p95": {
+      "nvidia": [
+        29646,
+        69391
+      ]
+    },
+    "tokens_in_out": [
+      49948,
+      77953
+    ],
+    "file_seconds_p50_p95": [
+      33.932,
+      72.3564
+    ],
+    "discarded": 7,
+    "tasks_failed": 0,
+    "verification": null
+  },
+  "E-nvidia+local": {
+    "run": "verify-model-nvidia-by-local",
+    "files": 32,
+    "complete_files": 32,
+    "models": {
+      "local": "qwen3-vl:4b-instruct"
+    },
+    "overall": {
+      "correct_predictions": 57,
+      "predictions": 65,
+      "found_labels": 51,
+      "labels": 55,
+      "precision": 0.8769230769230769,
+      "recall": 0.9272727272727272,
+      "f1": 0.9013953488372093
+    },
+    "model_findings": {
+      "correct_predictions": 45,
+      "predictions": 53,
+      "found_labels": 39,
+      "labels": 55,
+      "precision": 0.8490566037735849,
+      "recall": 0.7090909090909091,
+      "f1": 0.7727873183619552
+    },
+    "location_only": {
+      "correct_predictions": 62,
+      "predictions": 65,
+      "found_labels": 52,
+      "labels": 55,
+      "precision": 0.9538461538461539,
+      "recall": 0.9454545454545454,
+      "f1": 0.9496318114874817
+    },
+    "macro_f1": 0.9303596833984571,
+    "by_category": {
+      "bug": {
+        "correct_predictions": 23,
+        "predictions": 29,
+        "found_labels": 20,
+        "labels": 23,
+        "precision": 0.7931034482758621,
+        "recall": 0.8695652173913043,
+        "f1": 0.8295761947700633
+      },
+      "maintainability": {
+        "correct_predictions": 2,
+        "predictions": 2,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "performance": {
+        "correct_predictions": 8,
+        "predictions": 10,
+        "found_labels": 7,
+        "labels": 7,
+        "precision": 0.8,
+        "recall": 1.0,
+        "f1": 0.888888888888889
+      },
+      "security": {
+        "correct_predictions": 17,
+        "predictions": 17,
+        "found_labels": 15,
+        "labels": 15,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "style": {
+        "correct_predictions": 7,
+        "predictions": 7,
+        "found_labels": 7,
+        "labels": 8,
+        "precision": 1.0,
+        "recall": 0.875,
+        "f1": 0.9333333333333333
+      }
+    },
+    "recall_by_detection": {
+      "static": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 29,
+        "labels": 29,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "semantic": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 22,
+        "labels": 26,
+        "precision": null,
+        "recall": 0.8461538461538461,
+        "f1": null
+      }
+    },
+    "recall_by_cwe": {
+      "CWE-208": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-22": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-295": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-330": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-400": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-502": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-78": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-79": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-798": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-89": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-916": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-918": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-95": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      }
+    },
+    "clean_file_findings": 2,
+    "found": [
+      "auth_tokens/hardcoded-key",
+      "auth_tokens/timing-compare",
+      "auth_tokens/weak-random",
+      "backup_tool/shell-injection",
+      "backup_tool/tar-traversal",
+      "billing/cents-type",
+      "billing/double-discount",
+      "billing/empty-average",
+      "config_loader/unsafe-pickle",
+      "config_loader/unsafe-yaml",
+      "csv_export/return-in-finally",
+      "csv_export/unclosed-file",
+      "date_ranges/end-excluded",
+      "date_ranges/naive-now",
+      "file_server/path-traversal",
+      "inventory/is-literal",
+      "inventory/mutable-default",
+      "inventory/reorder-boundary",
+      "latency_stats/median-unsorted",
+      "latency_stats/percentile-index",
+      "legacy_helpers/class-name",
+      "legacy_helpers/function-name",
+      "legacy_helpers/lambda-assignment",
+      "legacy_helpers/long-line",
+      "legacy_helpers/multiple-imports",
+      "legacy_helpers/none-comparison",
+      "legacy_helpers/two-statements",
+      "legacy_helpers/unused-import",
+      "log_scanner/compile-in-loop",
+      "log_scanner/read-whole-file",
+      "notifications/blocking-sleep",
+      "notifications/not-awaited",
+      "page_cache/evicts-newest",
+      "page_cache/get-not-recent",
+      "page_cache/mutate-while-iterating",
+      "password_store/fast-hash",
+      "payment_matching/count-in-loop",
+      "payment_matching/nested-join",
+      "report_renderer/autoescape-off",
+      "report_renderer/eval",
+      "retry/bare-except",
+      "search_index/list-membership",
+      "search_index/quadratic-unique",
+      "shipping/missing-region",
+      "shipping/optional-rate",
+      "upload_manifest/syntax-error",
+      "user_repository/page-offset",
+      "user_repository/sql-injection",
+      "webhook_client/no-timeout",
+      "webhook_client/ssrf",
+      "webhook_client/tls-disabled"
+    ],
+    "calls": {
+      "local": {
+        "ok": 32
+      }
+    },
+    "latency_ms_p50_p95": {
+      "local": [
+        4626,
+        6769
+      ]
+    },
+    "tokens_in_out": [
+      18165,
+      2120
+    ],
+    "file_seconds_p50_p95": [
+      7.9625,
+      18.333800000000004
+    ],
+    "discarded": 0,
+    "tasks_failed": 0,
+    "verification": {
+      "confirmed": 30,
+      "confirmed_real": 24,
+      "disputed": 2,
+      "disputed_false": 0,
+      "precision_if_hidden": 0.873015873015873
+    }
+  },
+  "B": {
+    "run": "llm-only",
+    "files": 32,
+    "complete_files": 32,
+    "models": {
+      "gemini": "gemini-3.5-flash",
+      "nvidia": "nvidia/nemotron-3-super-120b-a12b",
+      "hf-large": "openai/gpt-oss-120b",
+      "hf-small": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
+      "local": "qwen3-vl:4b-instruct"
+    },
+    "overall": {
+      "correct_predictions": 23,
+      "predictions": 38,
+      "found_labels": 23,
+      "labels": 55,
+      "precision": 0.6052631578947368,
+      "recall": 0.41818181818181815,
+      "f1": 0.49462365591397855
+    },
+    "model_findings": {
+      "correct_predictions": 23,
+      "predictions": 38,
+      "found_labels": 23,
+      "labels": 55,
+      "precision": 0.6052631578947368,
+      "recall": 0.41818181818181815,
+      "f1": 0.49462365591397855
+    },
+    "location_only": {
+      "correct_predictions": 35,
+      "predictions": 38,
+      "found_labels": 26,
+      "labels": 55,
+      "precision": 0.9210526315789473,
+      "recall": 0.4727272727272727,
+      "f1": 0.6247854445588741
+    },
+    "macro_f1": 0.35029069767441856,
+    "by_category": {
+      "bug": {
+        "correct_predictions": 14,
+        "predictions": 20,
+        "found_labels": 14,
+        "labels": 23,
+        "precision": 0.7,
+        "recall": 0.6086956521739131,
+        "f1": 0.6511627906976744
+      },
+      "maintainability": {
+        "correct_predictions": 0,
+        "predictions": 2,
+        "found_labels": 0,
+        "labels": 2,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "performance": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 0,
+        "labels": 7,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "security": {
+        "correct_predictions": 9,
+        "predictions": 9,
+        "found_labels": 9,
+        "labels": 15,
+        "precision": 1.0,
+        "recall": 0.6,
+        "f1": 0.7499999999999999
+      },
+      "style": {
+        "correct_predictions": 0,
+        "predictions": 7,
+        "found_labels": 0,
+        "labels": 8,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      }
+    },
+    "recall_by_detection": {
+      "static": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 12,
+        "labels": 29,
+        "precision": null,
+        "recall": 0.41379310344827586,
+        "f1": null
+      },
+      "semantic": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 11,
+        "labels": 26,
+        "precision": null,
+        "recall": 0.4230769230769231,
+        "f1": null
+      }
+    },
+    "recall_by_cwe": {
+      "CWE-208": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-22": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-295": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 0,
+        "labels": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "CWE-330": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-400": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 0,
+        "labels": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "CWE-502": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-78": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-79": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 0,
+        "labels": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "CWE-798": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-89": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 0,
+        "labels": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "CWE-916": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 0,
+        "labels": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "CWE-918": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 0,
+        "labels": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "CWE-95": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      }
+    },
+    "clean_file_findings": 2,
+    "found": [
+      "auth_tokens/hardcoded-key",
+      "auth_tokens/timing-compare",
+      "auth_tokens/weak-random",
+      "backup_tool/shell-injection",
+      "backup_tool/tar-traversal",
+      "billing/cents-type",
+      "billing/double-discount",
+      "billing/empty-average",
+      "config_loader/shared-defaults",
+      "config_loader/unsafe-pickle",
+      "config_loader/unsafe-yaml",
+      "csv_export/return-in-finally",
+      "date_ranges/end-excluded",
+      "date_ranges/naive-now",
+      "file_server/path-traversal",
+      "inventory/is-literal",
+      "inventory/mutable-default",
+      "inventory/reorder-boundary",
+      "latency_stats/median-unsorted",
+      "latency_stats/percentile-index",
+      "report_renderer/eval",
+      "shipping/missing-region",
+      "shipping/optional-rate"
+    ],
+    "calls": {
+      "gemini": {
+        "quota_exhausted": 1,
+        "skipped": 54
+      },
+      "hf-large": {
+        "ok": 8,
+        "quota_exhausted": 1,
+        "skipped": 17
+      },
+      "hf-small": {
+        "ok": 3,
+        "quota_exhausted": 1,
+        "skipped": 28
+      },
+      "local": {
+        "ok": 47
+      },
+      "nvidia": {
+        "ok": 6,
+        "rejected": 2,
+        "skipped": 44,
+        "unavailable": 9
+      }
+    },
+    "latency_ms_p50_p95": {
+      "hf-large": [
+        1028,
+        1305
+      ],
+      "hf-small": [
+        4128,
+        5671
+      ],
+      "local": [
+        1719,
+        15733
+      ],
+      "nvidia": [
+        20896,
+        42837
+      ]
+    },
+    "tokens_in_out": [
+      76639,
+      25306
+    ],
+    "file_seconds_p50_p95": [
+      8.465,
+      93.2625
+    ],
+    "discarded": 5,
+    "tasks_failed": 0,
+    "verification": null
+  },
+  "D": {
+    "run": "hybrid",
+    "files": 32,
+    "complete_files": 32,
+    "models": {
+      "gemini": "gemini-3.5-flash",
+      "nvidia": "nvidia/nemotron-3-super-120b-a12b",
+      "hf-large": "openai/gpt-oss-120b",
+      "hf-small": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
+      "local": "qwen3-vl:4b-instruct"
+    },
+    "overall": {
+      "correct_predictions": 51,
+      "predictions": 89,
+      "found_labels": 46,
+      "labels": 55,
+      "precision": 0.5730337078651685,
+      "recall": 0.8363636363636363,
+      "f1": 0.6800985650094216
+    },
+    "model_findings": {
+      "correct_predictions": 49,
+      "predictions": 87,
+      "found_labels": 44,
+      "labels": 55,
+      "precision": 0.5632183908045977,
+      "recall": 0.8,
+      "f1": 0.6610455311973018
+    },
+    "location_only": {
+      "correct_predictions": 74,
+      "predictions": 89,
+      "found_labels": 50,
+      "labels": 55,
+      "precision": 0.8314606741573034,
+      "recall": 0.9090909090909091,
+      "f1": 0.8685446009389672
+    },
+    "macro_f1": 0.6241350251343902,
+    "by_category": {
+      "bug": {
+        "correct_predictions": 20,
+        "predictions": 29,
+        "found_labels": 18,
+        "labels": 23,
+        "precision": 0.6896551724137931,
+        "recall": 0.782608695652174,
+        "f1": 0.7331975560081466
+      },
+      "maintainability": {
+        "correct_predictions": 2,
+        "predictions": 17,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": 0.11764705882352941,
+        "recall": 1.0,
+        "f1": 0.21052631578947367
+      },
+      "performance": {
+        "correct_predictions": 4,
+        "predictions": 5,
+        "found_labels": 4,
+        "labels": 7,
+        "precision": 0.8,
+        "recall": 0.5714285714285714,
+        "f1": 0.6666666666666666
+      },
+      "security": {
+        "correct_predictions": 17,
+        "predictions": 18,
+        "found_labels": 14,
+        "labels": 15,
+        "precision": 0.9444444444444444,
+        "recall": 0.9333333333333333,
+        "f1": 0.9388560157790926
+      },
+      "style": {
+        "correct_predictions": 8,
+        "predictions": 20,
+        "found_labels": 8,
+        "labels": 8,
+        "precision": 0.4,
+        "recall": 1.0,
+        "f1": 0.5714285714285715
+      }
+    },
+    "recall_by_detection": {
+      "static": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 29,
+        "labels": 29,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "semantic": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 17,
+        "labels": 26,
+        "precision": null,
+        "recall": 0.6538461538461539,
+        "f1": null
+      }
+    },
+    "recall_by_cwe": {
+      "CWE-208": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-22": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-295": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-330": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-400": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-502": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-78": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-79": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-798": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-89": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-916": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-918": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 0,
+        "labels": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "CWE-95": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      }
+    },
+    "clean_file_findings": 7,
+    "found": [
+      "auth_tokens/hardcoded-key",
+      "auth_tokens/timing-compare",
+      "auth_tokens/weak-random",
+      "backup_tool/shell-injection",
+      "backup_tool/tar-traversal",
+      "billing/cents-type",
+      "billing/double-discount",
+      "billing/empty-average",
+      "config_loader/shared-defaults",
+      "config_loader/unsafe-pickle",
+      "config_loader/unsafe-yaml",
+      "csv_export/return-in-finally",
+      "csv_export/unclosed-file",
+      "date_ranges/end-excluded",
+      "date_ranges/naive-now",
+      "file_server/path-traversal",
+      "inventory/is-literal",
+      "inventory/mutable-default",
+      "inventory/reorder-boundary",
+      "latency_stats/percentile-index",
+      "legacy_helpers/class-name",
+      "legacy_helpers/function-name",
+      "legacy_helpers/lambda-assignment",
+      "legacy_helpers/long-line",
+      "legacy_helpers/missing-docstring",
+      "legacy_helpers/multiple-imports",
+      "legacy_helpers/none-comparison",
+      "legacy_helpers/two-statements",
+      "legacy_helpers/unused-import",
+      "notifications/blocking-sleep",
+      "notifications/not-awaited",
+      "password_store/fast-hash",
+      "payment_matching/count-in-loop",
+      "report_renderer/autoescape-off",
+      "report_renderer/eval",
+      "retry/bare-except",
+      "retry/no-increment",
+      "search_index/list-membership",
+      "search_index/quadratic-unique",
+      "shipping/missing-region",
+      "shipping/optional-rate",
+      "upload_manifest/syntax-error",
+      "user_repository/page-offset",
+      "user_repository/sql-injection",
+      "webhook_client/no-timeout",
+      "webhook_client/tls-disabled"
+    ],
+    "calls": {
+      "gemini": {
+        "quota_exhausted": 1,
+        "skipped": 24
+      },
+      "hf-large": {
+        "skipped": 7
+      },
+      "hf-small": {
+        "ok": 1,
+        "quota_exhausted": 1,
+        "skipped": 30
+      },
+      "local": {
+        "ok": 25
+      },
+      "nvidia": {
+        "ok": 38,
+        "rejected": 3,
+        "skipped": 11,
+        "unavailable": 11
+      }
+    },
+    "latency_ms_p50_p95": {
+      "hf-small": [
+        4648,
+        4648
+      ],
+      "local": [
+        1835,
+        9573
+      ],
+      "nvidia": [
+        34413,
+        74658
+      ]
+    },
+    "tokens_in_out": [
+      87080,
+      125232
+    ],
+    "file_seconds_p50_p95": [
+      57.158,
+      102.39079999999998
+    ],
+    "discarded": 5,
+    "tasks_failed": 0,
+    "verification": null
+  },
+  "E": {
+    "run": "hybrid",
+    "files": 32,
+    "complete_files": 32,
+    "models": {
+      "gemini": "gemini-3.5-flash",
+      "nvidia": "nvidia/nemotron-3-super-120b-a12b",
+      "hf-large": "openai/gpt-oss-120b",
+      "hf-small": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
+      "local": "qwen3-vl:4b-instruct"
+    },
+    "overall": {
+      "correct_predictions": 51,
+      "predictions": 89,
+      "found_labels": 46,
+      "labels": 55,
+      "precision": 0.5730337078651685,
+      "recall": 0.8363636363636363,
+      "f1": 0.6800985650094216
+    },
+    "model_findings": {
+      "correct_predictions": 49,
+      "predictions": 87,
+      "found_labels": 44,
+      "labels": 55,
+      "precision": 0.5632183908045977,
+      "recall": 0.8,
+      "f1": 0.6610455311973018
+    },
+    "location_only": {
+      "correct_predictions": 74,
+      "predictions": 89,
+      "found_labels": 50,
+      "labels": 55,
+      "precision": 0.8314606741573034,
+      "recall": 0.9090909090909091,
+      "f1": 0.8685446009389672
+    },
+    "macro_f1": 0.6241350251343902,
+    "by_category": {
+      "bug": {
+        "correct_predictions": 20,
+        "predictions": 29,
+        "found_labels": 18,
+        "labels": 23,
+        "precision": 0.6896551724137931,
+        "recall": 0.782608695652174,
+        "f1": 0.7331975560081466
+      },
+      "maintainability": {
+        "correct_predictions": 2,
+        "predictions": 17,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": 0.11764705882352941,
+        "recall": 1.0,
+        "f1": 0.21052631578947367
+      },
+      "performance": {
+        "correct_predictions": 4,
+        "predictions": 5,
+        "found_labels": 4,
+        "labels": 7,
+        "precision": 0.8,
+        "recall": 0.5714285714285714,
+        "f1": 0.6666666666666666
+      },
+      "security": {
+        "correct_predictions": 17,
+        "predictions": 18,
+        "found_labels": 14,
+        "labels": 15,
+        "precision": 0.9444444444444444,
+        "recall": 0.9333333333333333,
+        "f1": 0.9388560157790926
+      },
+      "style": {
+        "correct_predictions": 8,
+        "predictions": 20,
+        "found_labels": 8,
+        "labels": 8,
+        "precision": 0.4,
+        "recall": 1.0,
+        "f1": 0.5714285714285715
+      }
+    },
+    "recall_by_detection": {
+      "static": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 29,
+        "labels": 29,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "semantic": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 17,
+        "labels": 26,
+        "precision": null,
+        "recall": 0.6538461538461539,
+        "f1": null
+      }
+    },
+    "recall_by_cwe": {
+      "CWE-208": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-22": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-295": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-330": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-400": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-502": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-78": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-79": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-798": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-89": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-916": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-918": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 0,
+        "labels": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "CWE-95": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      }
+    },
+    "clean_file_findings": 7,
+    "found": [
+      "auth_tokens/hardcoded-key",
+      "auth_tokens/timing-compare",
+      "auth_tokens/weak-random",
+      "backup_tool/shell-injection",
+      "backup_tool/tar-traversal",
+      "billing/cents-type",
+      "billing/double-discount",
+      "billing/empty-average",
+      "config_loader/shared-defaults",
+      "config_loader/unsafe-pickle",
+      "config_loader/unsafe-yaml",
+      "csv_export/return-in-finally",
+      "csv_export/unclosed-file",
+      "date_ranges/end-excluded",
+      "date_ranges/naive-now",
+      "file_server/path-traversal",
+      "inventory/is-literal",
+      "inventory/mutable-default",
+      "inventory/reorder-boundary",
+      "latency_stats/percentile-index",
+      "legacy_helpers/class-name",
+      "legacy_helpers/function-name",
+      "legacy_helpers/lambda-assignment",
+      "legacy_helpers/long-line",
+      "legacy_helpers/missing-docstring",
+      "legacy_helpers/multiple-imports",
+      "legacy_helpers/none-comparison",
+      "legacy_helpers/two-statements",
+      "legacy_helpers/unused-import",
+      "notifications/blocking-sleep",
+      "notifications/not-awaited",
+      "password_store/fast-hash",
+      "payment_matching/count-in-loop",
+      "report_renderer/autoescape-off",
+      "report_renderer/eval",
+      "retry/bare-except",
+      "retry/no-increment",
+      "search_index/list-membership",
+      "search_index/quadratic-unique",
+      "shipping/missing-region",
+      "shipping/optional-rate",
+      "upload_manifest/syntax-error",
+      "user_repository/page-offset",
+      "user_repository/sql-injection",
+      "webhook_client/no-timeout",
+      "webhook_client/tls-disabled"
+    ],
+    "calls": {
+      "gemini": {
+        "quota_exhausted": 1,
+        "skipped": 30
+      },
+      "hf-large": {
+        "ok": 1,
+        "quota_exhausted": 1,
+        "skipped": 11
+      },
+      "hf-small": {
+        "ok": 1,
+        "quota_exhausted": 1,
+        "skipped": 30
+      },
+      "local": {
+        "ok": 30
+      },
+      "nvidia": {
+        "ok": 38,
+        "rejected": 3,
+        "skipped": 11,
+        "unavailable": 11
+      }
+    },
+    "latency_ms_p50_p95": {
+      "hf-large": [
+        691,
+        691
+      ],
+      "hf-small": [
+        4648,
+        4648
+      ],
+      "local": [
+        1946,
+        9311
+      ],
+      "nvidia": [
+        34413,
+        74658
+      ]
+    },
+    "tokens_in_out": [
+      90659,
+      126001
+    ],
+    "file_seconds_p50_p95": [
+      61.019999999999996,
+      102.93215000000001
+    ],
+    "discarded": 5,
+    "tasks_failed": 0,
+    "verification": {
+      "confirmed": 6,
+      "confirmed_real": 6,
+      "disputed": 0,
+      "disputed_false": 0,
+      "precision_if_hidden": 0.5730337078651685
+    }
+  },
+  "F-gemini": {
+    "run": "model-gemini",
+    "files": 32,
+    "complete_files": 29,
+    "models": {
+      "gemini": "gemini-3.5-flash"
+    },
+    "overall": {
+      "correct_predictions": 53,
+      "predictions": 56,
+      "found_labels": 49,
+      "labels": 50,
+      "precision": 0.9464285714285714,
+      "recall": 0.98,
+      "f1": 0.9629217649239896
+    },
+    "model_findings": {
+      "correct_predictions": 46,
+      "predictions": 49,
+      "found_labels": 42,
+      "labels": 50,
+      "precision": 0.9387755102040817,
+      "recall": 0.84,
+      "f1": 0.8866452501147315
+    },
+    "location_only": {
+      "correct_predictions": 56,
+      "predictions": 56,
+      "found_labels": 50,
+      "labels": 50,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "macro_f1": 0.9386666666666666,
+    "by_category": {
+      "bug": {
+        "correct_predictions": 24,
+        "predictions": 26,
+        "found_labels": 22,
+        "labels": 22,
+        "precision": 0.9230769230769231,
+        "recall": 1.0,
+        "f1": 0.9600000000000001
+      },
+      "maintainability": {
+        "correct_predictions": 2,
+        "predictions": 3,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "f1": 0.8
+      },
+      "performance": {
+        "correct_predictions": 8,
+        "predictions": 8,
+        "found_labels": 7,
+        "labels": 7,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "security": {
+        "correct_predictions": 12,
+        "predictions": 12,
+        "found_labels": 11,
+        "labels": 11,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "style": {
+        "correct_predictions": 7,
+        "predictions": 7,
+        "found_labels": 7,
+        "labels": 8,
+        "precision": 1.0,
+        "recall": 0.875,
+        "f1": 0.9333333333333333
+      }
+    },
+    "recall_by_detection": {
+      "static": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 26,
+        "labels": 26,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "semantic": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 23,
+        "labels": 24,
+        "precision": null,
+        "recall": 0.9583333333333334,
+        "f1": null
+      }
+    },
+    "recall_by_cwe": {
+      "CWE-208": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-22": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-330": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-502": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-78": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-79": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-798": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-916": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-95": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      }
+    },
+    "clean_file_findings": 0,
+    "found": [
+      "auth_tokens/hardcoded-key",
+      "auth_tokens/timing-compare",
+      "auth_tokens/weak-random",
+      "backup_tool/shell-injection",
+      "backup_tool/tar-traversal",
+      "billing/cents-type",
+      "billing/double-discount",
+      "billing/empty-average",
+      "config_loader/shared-defaults",
+      "config_loader/unsafe-pickle",
+      "config_loader/unsafe-yaml",
+      "csv_export/return-in-finally",
+      "csv_export/unclosed-file",
+      "date_ranges/end-excluded",
+      "date_ranges/naive-now",
+      "file_server/path-traversal",
+      "inventory/is-literal",
+      "inventory/mutable-default",
+      "inventory/negative-stock",
+      "inventory/reorder-boundary",
+      "latency_stats/median-unsorted",
+      "latency_stats/percentile-index",
+      "legacy_helpers/class-name",
+      "legacy_helpers/function-name",
+      "legacy_helpers/lambda-assignment",
+      "legacy_helpers/long-line",
+      "legacy_helpers/multiple-imports",
+      "legacy_helpers/none-comparison",
+      "legacy_helpers/two-statements",
+      "legacy_helpers/unused-import",
+      "log_scanner/compile-in-loop",
+      "log_scanner/read-whole-file",
+      "notifications/blocking-sleep",
+      "notifications/not-awaited",
+      "page_cache/evicts-newest",
+      "page_cache/get-not-recent",
+      "page_cache/mutate-while-iterating",
+      "password_store/fast-hash",
+      "payment_matching/count-in-loop",
+      "payment_matching/nested-join",
+      "report_renderer/autoescape-off",
+      "report_renderer/eval",
+      "retry/bare-except",
+      "retry/no-increment",
+      "search_index/list-membership",
+      "search_index/quadratic-unique",
+      "shipping/missing-region",
+      "shipping/optional-rate",
+      "upload_manifest/syntax-error"
+    ],
+    "calls": {
+      "gemini": {
+        "ok": 29
+      }
+    },
+    "latency_ms_p50_p95": {
+      "gemini": [
+        7741,
+        21374
+      ]
+    },
+    "tokens_in_out": [
+      45843,
+      27499
+    ],
+    "file_seconds_p50_p95": [
+      12.364,
+      25.0706
+    ],
+    "discarded": 0,
+    "tasks_failed": 3,
+    "verification": null
+  },
+  "F-hf-large": {
+    "run": "model-hf-large",
+    "files": 32,
+    "complete_files": 17,
+    "models": {
+      "hf-large": "openai/gpt-oss-120b"
+    },
+    "overall": {
+      "correct_predictions": 39,
+      "predictions": 43,
+      "found_labels": 36,
+      "labels": 38,
+      "precision": 0.9069767441860465,
+      "recall": 0.9473684210526315,
+      "f1": 0.9267326732673267
+    },
+    "model_findings": {
+      "correct_predictions": 32,
+      "predictions": 36,
+      "found_labels": 29,
+      "labels": 38,
+      "precision": 0.8888888888888888,
+      "recall": 0.7631578947368421,
+      "f1": 0.8212389380530973
+    },
+    "location_only": {
+      "correct_predictions": 41,
+      "predictions": 43,
+      "found_labels": 37,
+      "labels": 38,
+      "precision": 0.9534883720930233,
+      "recall": 0.9736842105263158,
+      "f1": 0.9634804699904731
+    },
+    "macro_f1": 0.9607466666666667,
+    "by_category": {
+      "bug": {
+        "correct_predictions": 17,
+        "predictions": 21,
+        "found_labels": 16,
+        "labels": 17,
+        "precision": 0.8095238095238095,
+        "recall": 0.9411764705882353,
+        "f1": 0.8704
+      },
+      "maintainability": {
+        "correct_predictions": 2,
+        "predictions": 2,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "performance": {
+        "correct_predictions": 3,
+        "predictions": 3,
+        "found_labels": 3,
+        "labels": 3,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "security": {
+        "correct_predictions": 10,
+        "predictions": 10,
+        "found_labels": 8,
+        "labels": 8,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "style": {
+        "correct_predictions": 7,
+        "predictions": 7,
+        "found_labels": 7,
+        "labels": 8,
+        "precision": 1.0,
+        "recall": 0.875,
+        "f1": 0.9333333333333333
+      }
+    },
+    "recall_by_detection": {
+      "static": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 20,
+        "labels": 20,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "semantic": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 16,
+        "labels": 18,
+        "precision": null,
+        "recall": 0.8888888888888888,
+        "f1": null
+      }
+    },
+    "recall_by_cwe": {
+      "CWE-208": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-22": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-330": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-502": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-78": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-798": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      }
+    },
+    "clean_file_findings": 2,
+    "found": [
+      "auth_tokens/hardcoded-key",
+      "auth_tokens/timing-compare",
+      "auth_tokens/weak-random",
+      "backup_tool/shell-injection",
+      "backup_tool/tar-traversal",
+      "billing/cents-type",
+      "billing/double-discount",
+      "billing/empty-average",
+      "config_loader/shared-defaults",
+      "config_loader/unsafe-pickle",
+      "config_loader/unsafe-yaml",
+      "csv_export/return-in-finally",
+      "csv_export/unclosed-file",
+      "date_ranges/end-excluded",
+      "date_ranges/naive-now",
+      "file_server/path-traversal",
+      "inventory/is-literal",
+      "inventory/mutable-default",
+      "inventory/negative-stock",
+      "inventory/reorder-boundary",
+      "latency_stats/median-unsorted",
+      "latency_stats/percentile-index",
+      "legacy_helpers/class-name",
+      "legacy_helpers/function-name",
+      "legacy_helpers/lambda-assignment",
+      "legacy_helpers/long-line",
+      "legacy_helpers/multiple-imports",
+      "legacy_helpers/none-comparison",
+      "legacy_helpers/two-statements",
+      "legacy_helpers/unused-import",
+      "log_scanner/compile-in-loop",
+      "log_scanner/read-whole-file",
+      "notifications/blocking-sleep",
+      "notifications/not-awaited",
+      "page_cache/evicts-newest",
+      "page_cache/mutate-while-iterating"
+    ],
+    "calls": {
+      "hf-large": {
+        "ok": 17
+      }
+    },
+    "latency_ms_p50_p95": {
+      "hf-large": [
+        1334,
+        2182
+      ]
+    },
+    "tokens_in_out": [
+      26600,
+      16256
+    ],
+    "file_seconds_p50_p95": [
+      4.722,
+      6.3342
+    ],
+    "discarded": 0,
+    "tasks_failed": 15,
+    "verification": null
+  },
+  "F-local": {
+    "run": "model-local",
+    "files": 32,
+    "complete_files": 32,
+    "models": {
+      "local": "qwen3-vl:4b-instruct"
+    },
+    "overall": {
+      "correct_predictions": 27,
+      "predictions": 31,
+      "found_labels": 26,
+      "labels": 55,
+      "precision": 0.8709677419354839,
+      "recall": 0.4727272727272727,
+      "f1": 0.612832824094282
+    },
+    "model_findings": {
+      "correct_predictions": 20,
+      "predictions": 24,
+      "found_labels": 19,
+      "labels": 55,
+      "precision": 0.8333333333333334,
+      "recall": 0.34545454545454546,
+      "f1": 0.48843187660668386
+    },
+    "location_only": {
+      "correct_predictions": 29,
+      "predictions": 31,
+      "found_labels": 28,
+      "labels": 55,
+      "precision": 0.9354838709677419,
+      "recall": 0.509090909090909,
+      "f1": 0.6593585058871295
+    },
+    "macro_f1": 0.7047741935483871,
+    "by_category": {
+      "bug": {
+        "correct_predictions": 6,
+        "predictions": 8,
+        "found_labels": 6,
+        "labels": 23,
+        "precision": 0.75,
+        "recall": 0.2608695652173913,
+        "f1": 0.3870967741935483
+      },
+      "maintainability": {
+        "correct_predictions": 1,
+        "predictions": 1,
+        "found_labels": 1,
+        "labels": 2,
+        "precision": 1.0,
+        "recall": 0.5,
+        "f1": 0.6666666666666666
+      },
+      "performance": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 0,
+        "labels": 7,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "security": {
+        "correct_predictions": 13,
+        "predictions": 15,
+        "found_labels": 12,
+        "labels": 15,
+        "precision": 0.8666666666666667,
+        "recall": 0.8,
+        "f1": 0.832
+      },
+      "style": {
+        "correct_predictions": 7,
+        "predictions": 7,
+        "found_labels": 7,
+        "labels": 8,
+        "precision": 1.0,
+        "recall": 0.875,
+        "f1": 0.9333333333333333
+      }
+    },
+    "recall_by_detection": {
+      "static": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 26,
+        "labels": 29,
+        "precision": null,
+        "recall": 0.896551724137931,
+        "f1": null
+      },
+      "semantic": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 0,
+        "labels": 26,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      }
+    },
+    "recall_by_cwe": {
+      "CWE-208": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 0,
+        "labels": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "CWE-22": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 2,
+        "precision": null,
+        "recall": 0.5,
+        "f1": null
+      },
+      "CWE-295": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-330": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-400": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-502": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 2,
+        "labels": 2,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-78": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-79": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-798": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-89": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-916": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      },
+      "CWE-918": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 0,
+        "labels": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "CWE-95": {
+        "correct_predictions": 0,
+        "predictions": 0,
+        "found_labels": 1,
+        "labels": 1,
+        "precision": null,
+        "recall": 1.0,
+        "f1": null
+      }
+    },
+    "clean_file_findings": 2,
+    "found": [
+      "auth_tokens/hardcoded-key",
+      "auth_tokens/weak-random",
+      "backup_tool/shell-injection",
+      "backup_tool/tar-traversal",
+      "billing/cents-type",
+      "config_loader/unsafe-pickle",
+      "config_loader/unsafe-yaml",
+      "csv_export/return-in-finally",
+      "csv_export/unclosed-file",
+      "inventory/is-literal",
+      "inventory/mutable-default",
+      "legacy_helpers/class-name",
+      "legacy_helpers/function-name",
+      "legacy_helpers/lambda-assignment",
+      "legacy_helpers/long-line",
+      "legacy_helpers/multiple-imports",
+      "legacy_helpers/none-comparison",
+      "legacy_helpers/two-statements",
+      "password_store/fast-hash",
+      "report_renderer/autoescape-off",
+      "report_renderer/eval",
+      "retry/bare-except",
+      "shipping/optional-rate",
+      "user_repository/sql-injection",
+      "webhook_client/no-timeout",
+      "webhook_client/tls-disabled"
+    ],
+    "calls": {
+      "local": {
+        "ok": 32
+      }
+    },
+    "latency_ms_p50_p95": {
+      "local": [
+        7681,
+        31309
+      ]
+    },
+    "tokens_in_out": [
+      47573,
+      2916
+    ],
+    "file_seconds_p50_p95": [
+      10.8765,
+      35.95425
+    ],
+    "discarded": 0,
+    "tasks_failed": 0,
+    "verification": null
+  }
+}

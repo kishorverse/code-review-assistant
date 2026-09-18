@@ -9,7 +9,7 @@ Margin reviews a single source file or a zipped project in two passes.
 
 A router that knows each provider's rate limits sends every task to the best-suited model and falls back cleanly when a quota runs out. A verifier checks evidence and runs a second model on serious findings, so false positives are filtered out before you see them.
 
-> **Status:** in active development. Safe upload handling, structure-aware chunking, static analysis, the rate-limit-aware LLM router, hybrid LLM review with cross-model verification, the web API, the web UI and HTML, JSON and SARIF reports work today; the evaluation report is being added next.
+> **Status:** in active development. Safe upload handling, structure-aware chunking, static analysis, the rate-limit-aware LLM router, hybrid LLM review with cross-model verification, the web API, the web UI, HTML, JSON and SARIF reports, and the evaluation work today; delivery (CI action, notebook, final docs) is next.
 
 ## Planned features
 
@@ -17,10 +17,26 @@ A router that knows each provider's rate limits sends every task to the best-sui
 - **Style:** deviations from established guides (PEP 8 / PEP 257 for Python).
 - **Optimization:** performance and maintainability suggestions driven by complexity metrics.
 - **Hybrid, grounded review:** static findings are passed to the LLMs as structured input, and every LLM finding must cite real lines and quote real code.
-- **Rate-limit-aware routing:** token buckets, circuit breakers, role-based provider assignment, fallbacks and a response cache.
+- **Rate-limit-aware routing:** sliding-window rate limits, circuit breakers, role-based provider assignment, fallbacks and a response cache.
 - **Interactive and batch modes:** a web UI with live scan progress, a CLI, and SARIF output for CI/CD.
 - **Privacy:** explicit consent before any code leaves the machine, secret redaction before every LLM call, and automatic deletion of uploads.
 - **Evaluation:** precision/recall/F1, style accuracy, latency and robustness on a labeled dataset.
+
+## Evaluation at a glance
+
+On a dataset of 32 modules written for the purpose (55 labeled issues, 10 clean controls), with one
+reviewer model (NVIDIA Nemotron) throughout:
+
+| Configuration | Precision | Recall | F1 | Semantic issues found |
+|---|---|---|---|---|
+| Static analysis only | 0.94 | 0.53 | 0.68 | 0 of 26 |
+| LLM review only | 0.82 | 0.73 | 0.77 | 22 of 26 |
+| **Hybrid (Margin)** | **0.88** | **0.93** | **0.90** | 22 of 26 |
+
+Static analysis finds every rule-shaped issue and none of the semantic ones; the model finds the semantic
+ones; the hybrid keeps both. The [evaluation report](docs/evaluation.md) covers the model comparison
+(Gemini, gpt-oss, Nemotron and a local model), cross-model verification, style accuracy, a routing
+simulation and latency, with its limitations.
 
 ## Architecture at a glance
 
@@ -170,6 +186,7 @@ uv run pre-commit install
 - [LLM review and verification](docs/review.md): depth, secret masking, prompts, grounding, judgements and cross-model checks
 - [Web API](docs/api.md): scans, live events, reviewer decisions, reports, storage and retention
 - [Web UI](docs/ui.md): upload, live scan, results workspace, state, design and accessibility
+- [Evaluation](docs/evaluation.md): dataset, ablations, model comparison, verification, routing and latency; data and harness in [eval/](eval/README.md)
 
 ## License
 

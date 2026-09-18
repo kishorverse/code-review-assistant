@@ -25,8 +25,10 @@ from app.review.context import ReviewContext
 from app.review.grounding import clean_evidence, ungrounded_reason
 
 # Generous because reasoning models spend output tokens thinking; unused tokens are refunded.
+# Style once had half this budget, and in the evaluation NVIDIA's reasoning model ran out of
+# it on 18 style answers, which then fell back to a far weaker model.
 REVIEW_OUTPUT_TOKENS = 8192
-STYLE_OUTPUT_TOKENS = 4096
+STYLE_OUTPUT_TOKENS = 8192
 
 TEMPLATES = {Task.REVIEW: "task_review", Task.STYLE: "task_style"}
 OUTPUT_TOKENS = {Task.REVIEW: REVIEW_OUTPUT_TOKENS, Task.STYLE: STYLE_OUTPUT_TOKENS}

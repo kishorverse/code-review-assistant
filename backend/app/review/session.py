@@ -126,12 +126,9 @@ class ReviewSession:
                 skipped_chunks=plan.skipped,
             )
         )
-        self._secrets = static.secrets
         by_path = {file.path: file for file in files}
         paths = sorted({chunk.file_path for chunk in [*plan.review, *plan.style]})
-        self._sources = await asyncio.to_thread(
-            _load_sources, root, [by_path[path] for path in paths], static.secrets
-        )
+        await self.load_sources([by_path[path] for path in paths], static, root)
         project = describe_project(files)
         metrics = {entry.path: entry for entry in static.metrics}
 
@@ -175,6 +172,17 @@ class ReviewSession:
         )
         await self._emit_changed(static.findings, findings)
         return findings
+
+    async def load_sources(
+        self, files: Sequence[PreprocessedFile], static: StaticAnalysisResult, root: Path
+    ) -> None:
+        """Read ``files`` with detected secrets masked, as review and verification send them.
+
+        :meth:`review` calls this for the files it reviews; call it directly to verify
+        findings without reviewing first.
+        """
+        self._secrets = static.secrets
+        self._sources = await asyncio.to_thread(_load_sources, root, files, static.secrets)
 
     async def verify(self, findings: Sequence[Finding]) -> list[Finding]:
         """Cross-check serious AI findings with a second model."""

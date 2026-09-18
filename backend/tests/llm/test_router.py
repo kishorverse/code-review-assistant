@@ -293,10 +293,12 @@ async def test_batch_requests_wait_briefly_for_rate_limit_capacity(clock: FakeCl
         clock, routed(nvidia, clock, limits=limits), routed(ScriptedProvider("local"), clock)
     )
 
-    responses = [await router.complete(request()) for _ in range(4)]
+    responses = [await router.complete(request()) for _ in range(3)]
+    clock.advance(40)
+    responses.append(await router.complete(request()))
 
     assert [response.provider for response in responses] == ["nvidia"] * 4
-    assert clock.sleeps == [pytest.approx(20.0)]
+    assert clock.sleeps == [pytest.approx(20.0)], "until the first request leaves the window"
 
 
 async def test_requests_move_on_when_the_wait_is_too_long(clock: FakeClock) -> None:
@@ -346,6 +348,7 @@ async def test_a_call_that_waited_is_dropped_if_the_provider_was_paused_meanwhil
     limiter = RateLimiter(RateLimits(requests_per_minute=4, safety=1.0), clock)
     for _ in range(4):
         limiter.reserve(0)
+    clock.advance(45)
     nvidia = ScriptedProvider("nvidia")
     entry = routed(nvidia, clock, limiter=limiter)
     router = make_router(clock, entry, routed(ScriptedProvider("local"), clock))
@@ -370,6 +373,7 @@ async def test_a_request_that_waited_does_not_take_a_second_probe(clock: FakeClo
     limiter = RateLimiter(RateLimits(requests_per_minute=4, safety=1.0), clock)
     for _ in range(4):
         limiter.reserve(0)
+    clock.advance(45)
     nvidia = ScriptedProvider("nvidia")
     entry = routed(nvidia, clock, limiter=limiter)
     router = make_router(clock, entry, routed(ScriptedProvider("local"), clock))

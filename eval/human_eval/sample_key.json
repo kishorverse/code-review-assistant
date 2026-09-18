@@ -1,0 +1,158 @@
+{
+  "S01": {
+    "finding": "61c8cbfc76144331924afcf957ff51e9",
+    "providers": [
+      "local"
+    ]
+  },
+  "S02": {
+    "finding": "bb99d07263e0426c85536e2bbd961804",
+    "providers": [
+      "gemini"
+    ]
+  },
+  "S03": {
+    "finding": "3d90eed61ee54e26869ececfd5141ee2",
+    "providers": [
+      "gemini"
+    ]
+  },
+  "S04": {
+    "finding": "b6d8bee377e848a5b878c80be0d57714",
+    "providers": [
+      "nvidia"
+    ]
+  },
+  "S05": {
+    "finding": "bc14d984e48546ed8fe154e7b1c265a7",
+    "providers": [
+      "nvidia"
+    ]
+  },
+  "S06": {
+    "finding": "8db5f40f64d142ee928a41746a15fe22",
+    "providers": [
+      "gemini"
+    ]
+  },
+  "S07": {
+    "finding": "30f34fd2e3e44822b6ab547f69eef118",
+    "providers": [
+      "nvidia"
+    ]
+  },
+  "S08": {
+    "finding": "dc7862dde9264bc4b8787cd45bfdd196",
+    "providers": [
+      "gemini"
+    ]
+  },
+  "S09": {
+    "finding": "917d52a430a040acaf173e8714eea066",
+    "providers": [
+      "gemini"
+    ]
+  },
+  "S10": {
+    "finding": "2fc9e60c0cf345b89ee5169c2cef236f",
+    "providers": [
+      "gemini"
+    ]
+  },
+  "S11": {
+    "finding": "c8898a5c5a274a1caaedd9a55b93d7fe",
+    "providers": [
+      "nvidia"
+    ]
+  },
+  "S12": {
+    "finding": "50213bd4f58e401ba7eb8617bb4f184d",
+    "providers": [
+      "nvidia"
+    ]
+  },
+  "S13": {
+    "finding": "a95ff18a0fe545a5bbb2e8728413becc",
+    "providers": [
+      "hf-large"
+    ]
+  },
+  "S14": {
+    "finding": "95fad55c0c5f456ea0ea814841986adf",
+    "providers": [
+      "hf-large"
+    ]
+  },
+  "S15": {
+    "finding": "4145b45b101d4b7b83ccb044216a7c56",
+    "providers": [
+      "gemini"
+    ]
+  },
+  "S16": {
+    "finding": "50f40c53760f44388bdfe087270ec497",
+    "providers": [
+      "hf-large"
+    ]
+  },
+  "S17": {
+    "finding": "f15216bc50ca439186cb1cc7e9afd2bb",
+    "providers": [
+      "nvidia"
+    ]
+  },
+  "S18": {
+    "finding": "b94866005fcf4d69b4ee96f17b15f967",
+    "providers": [
+      "hf-large"
+    ]
+  },
+  "S19": {
+    "finding": "ee0378f7a4544a99b56fce458da9dc03",
+    "providers": [
+      "hf-large"
+    ]
+  },
+  "S20": {
+    "finding": "b0bc621aa37f427bb5857dbcb31ee7d1",
+    "providers": [
+      "nvidia"
+    ]
+  },
+  "S21": {
+    "finding": "ed735488a1c04876b65f1d1a97dab171",
+    "providers": [
+      "gemini"
+    ]
+  },
+  "S22": {
+    "finding": "0a9b019872d04962a93ab8285d20b1f1",
+    "providers": [
+      "hf-large"
+    ]
+  },
+  "S23": {
+    "finding": "5ccd0be20b2c4f819d1397f1280553d5",
+    "providers": [
+      "hf-large"
+    ]
+  },
+  "S24": {
+    "finding": "50f3772b12014edfa70de2f9d3621362",
+    "providers": [
+      "hf-large"
+    ]
+  },
+  "S25": {
+    "finding": "c5ae87a5f64d43059f863eba871725a7",
+    "providers": [
+      "nvidia"
+    ]
+  },
+  "S26": {
+    "finding": "6e2cdac5d05e450ca19842b452722456",
+    "providers": [
+      "local"
+    ]
+  }
+}
