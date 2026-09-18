@@ -60,3 +60,14 @@ def test_prompt_without_a_version_is_a_config_error(tmp_path: Path) -> None:
 
     with pytest.raises(ConfigError, match="task_new"):
         PromptLibrary(tmp_path).version("task_new")
+
+
+def test_models_are_told_that_masked_secrets_are_real() -> None:
+    # A model once dismissed a hardcoded key as "a placeholder" because it only saw the mask.
+    prompts = default_prompts()
+
+    for name in ("system_reviewer", "system_verifier"):
+        text = prompts.render(name)
+        assert "<REDACTED_SECRET_1> are real secrets" in text
+        rule = text.split("<REDACTED_SECRET_1>")[1].splitlines()[0]
+        assert "not" in rule

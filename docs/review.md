@@ -51,6 +51,8 @@ Pure layout rules (Ruff `E1`–`E5`, `W`, `I`, `Q`, `COM`) are never sent; they 
 
 The same value keeps one number within a file. The model can still see that two lines share a credential, and still report the hardcoded secret.
 
+The system prompts say plainly that a masked value is a real secret found in the file, masked by Margin, not a placeholder the author wrote. Before this was spelled out, a model judged a hardcoded signing key a false positive because all it saw was `<REDACTED_SECRET_1>`; the rule that protects high-severity security findings kept the key reported, flagged for review.
+
 Some analyzers quote literal values from the code in their messages (mypy's `Literal[...]` types, for example). Static finding messages in a prompt and finding titles sent for the summary are masked the same way.
 
 ## Prompts
