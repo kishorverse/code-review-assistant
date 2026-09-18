@@ -21,6 +21,7 @@ from app.errors import UploadTooLargeError
 from app.events import ScanStatus
 from app.findings import Finding, FindingStatus, Severity
 from app.ingest.models import SkippedFile
+from app.llm.models import CallRecord
 from app.report.document import Report, ReportCounts
 from app.report.html import render_html
 from app.report.sarif import to_sarif
@@ -43,14 +44,18 @@ Manager = Annotated[ScanManager, Depends(get_manager)]
 
 
 class ScanDetail(BaseModel):
-    """A scan's status, and its headline results once it has finished."""
+    """A scan's status, and its headline results once it has finished.
 
-    model_config = ConfigDict(frozen=True)
+    ``calls`` lists every model call attempt, so clients can show which provider saw which file.
+    """
+
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
 
     scan: ScanInfo
     summary: ReportCounts | None = None
     score: QualityScore | None = None
     ai_summary: ReviewSummary | None = None
+    calls: list[CallRecord] = []
 
 
 class FindingDecision(BaseModel):
@@ -62,7 +67,7 @@ class FindingDecision(BaseModel):
 class FileEntry(BaseModel):
     """One extracted file, with how many reported findings it has."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
 
     path: str
     language: str | None
@@ -74,7 +79,7 @@ class FileEntry(BaseModel):
 class FileTree(BaseModel):
     """The scan's files and the files left out of it."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
 
     files: list[FileEntry]
     skipped: list[SkippedFile]
@@ -83,7 +88,7 @@ class FileTree(BaseModel):
 class FileContent(BaseModel):
     """The text of one extracted file."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
 
     path: str
     language: str | None
@@ -141,6 +146,7 @@ async def get_scan(scan_id: str, manager: Manager) -> ScanDetail:
         summary=report.summary,
         score=report.score,
         ai_summary=report.review.summary if report.review else None,
+        calls=report.review.calls if report.review else [],
     )
 
 

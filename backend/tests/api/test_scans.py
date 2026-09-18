@@ -101,6 +101,8 @@ async def test_upload_follow_review_and_download(api: AsyncClient) -> None:
     assert detail["scan"]["status"] == "done"
     assert detail["summary"]["findings"] == 1
     assert detail["score"]["grade"] in {"A", "B", "C", "D", "E"}
+    streamed_calls = [e["data"]["call"] for e in events if e["event"] == "llm_call"]
+    assert detail["calls"] == streamed_calls
 
     findings = (await api.get(f"/api/scans/{scan['id']}/findings")).json()
     assert [f["title"] for f in findings] == ["Possible division by zero"]

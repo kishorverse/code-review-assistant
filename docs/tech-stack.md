@@ -8,7 +8,7 @@ This document records which technologies Margin uses and why. Exact versions are
 ┌──────────────────────┐   REST + SSE    ┌──────────────────────────────────────────┐
 │ Web UI               │ ──────────────► │ FastAPI backend                          │
 │ React · TypeScript   │                 │  ingest → preprocess → static analysis   │
-│ Tailwind · Monaco    │ ◄────────────── │  → context → LLM router → verify → report │
+│ Tailwind · Prism     │ ◄────────────── │  → context → LLM router → verify → report │
 └──────────────────────┘  live events    └───────────┬──────────────────┬───────────┘
                                                      │                  │
 ┌──────────────────────┐   same pipeline             │ subprocesses     │ HTTPS (with consent)
@@ -102,14 +102,14 @@ Provider limits and task routing live in `backend/config/providers.yaml`, so the
 |---|---|---|
 | Build | Vite + React 19 + TypeScript | Fast development server, a standard modern stack, strict typing. |
 | Styling | Tailwind CSS v4 + shadcn/ui | Design tokens in CSS, accessible Radix-based components that live in the repo. |
-| Code view | Monaco editor (`@monaco-editor/react`) | Real editor rendering with gutter decorations for findings. Lazy-loaded so the landing page stays fast. |
+| Code view | Prism | Read-only highlighting in a few kilobytes, bundled with the app; the gutter marks are plain, accessible HTML. Monaco was the first plan, but a full editor (megabytes of JavaScript, loaded from a CDN by default) is more than a read-only view needs. |
 | Server state | TanStack Query | Caching, loading and error states for REST calls. |
 | Live scan state | Zustand + native `EventSource` | A small store fed by the SSE stream. |
-| Routing | React Router | Landing, scan and results pages. |
+| Routing | React Router | The upload page and the scan page, which becomes the results workspace when the scan finishes. |
 | Upload | react-dropzone | Accessible drag-and-drop file input. |
 | Icons, toasts | lucide-react, sonner | Lightweight and consistent. |
 | Fonts | Bricolage Grotesque, IBM Plex Sans / Mono (self-hosted via Fontsource) | No runtime calls to third-party font CDNs. |
-| API types | openapi-typescript | Types generated from the backend schema, so frontend and backend cannot drift. |
+| API types | openapi-typescript | Types generated from the backend schema; CI fails if the committed schema or types are stale, so frontend and backend cannot drift. |
 
 ## 7. Quality and delivery
 

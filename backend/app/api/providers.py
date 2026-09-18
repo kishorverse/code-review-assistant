@@ -13,7 +13,7 @@ router = APIRouter(tags=["providers"])
 class ProviderView(BaseModel):
     """One enabled provider. ``external`` providers receive code only with consent."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
 
     name: str
     model: str
@@ -26,7 +26,7 @@ class ProviderView(BaseModel):
 class ProvidersView(BaseModel):
     """The enabled providers and whether models are real or mocked."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
 
     mode: LLMMode
     providers: list[ProviderView]

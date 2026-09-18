@@ -38,7 +38,7 @@ class SkipReason(StrEnum):
 class SkippedFile(BaseModel):
     """A file that was present in the upload but not extracted."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
 
     path: str
     reason: SkipReason

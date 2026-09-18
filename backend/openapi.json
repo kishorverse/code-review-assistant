@@ -1,0 +1,1539 @@
+{
+  "components": {
+    "schemas": {
+      "Body_create_scan_api_scans_post": {
+        "properties": {
+          "allow_external": {
+            "default": false,
+            "title": "Allow External",
+            "type": "boolean"
+          },
+          "depth": {
+            "$ref": "#/components/schemas/Depth",
+            "default": "standard"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_create_scan_api_scans_post",
+        "type": "object"
+      },
+      "BreakerState": {
+        "description": "Whether a provider receives traffic.",
+        "enum": [
+          "closed",
+          "open",
+          "half_open"
+        ],
+        "title": "BreakerState",
+        "type": "string"
+      },
+      "CallRecord": {
+        "description": "One attempt, for provenance in reports and the routing evaluation.\n\nRecords never contain prompts or responses, so they can be logged and stored.\n\nAttributes:\n    file_path: The file whose code the call was about, so reports can show which\n        provider saw which file; ``None`` for calls about the whole project.",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "file_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Path"
+          },
+          "input_tokens": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "latency_ms": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Latency Ms",
+            "type": "integer"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "output_tokens": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Output Tokens",
+            "type": "integer"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CallStatus"
+          },
+          "task": {
+            "$ref": "#/components/schemas/Task"
+          }
+        },
+        "required": [
+          "task",
+          "provider",
+          "model",
+          "status",
+          "latency_ms",
+          "input_tokens",
+          "output_tokens",
+          "detail",
+          "file_path"
+        ],
+        "title": "CallRecord",
+        "type": "object"
+      },
+      "CallStatus": {
+        "description": "Outcome of one attempt to use a provider.",
+        "enum": [
+          "ok",
+          "cached",
+          "rate_limited",
+          "quota_exhausted",
+          "auth_failed",
+          "misconfigured",
+          "unavailable",
+          "rejected",
+          "skipped"
+        ],
+        "title": "CallStatus",
+        "type": "string"
+      },
+      "Category": {
+        "description": "What kind of issue a finding describes.",
+        "enum": [
+          "bug",
+          "security",
+          "style",
+          "performance",
+          "maintainability",
+          "typing"
+        ],
+        "title": "Category",
+        "type": "string"
+      },
+      "Depth": {
+        "description": "How thoroughly models review a scan.",
+        "enum": [
+          "static",
+          "quick",
+          "standard",
+          "deep"
+        ],
+        "title": "Depth",
+        "type": "string"
+      },
+      "FileContent": {
+        "description": "The text of one extracted file.",
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "language",
+          "content"
+        ],
+        "title": "FileContent",
+        "type": "object"
+      },
+      "FileEntry": {
+        "description": "One extracted file, with how many reported findings it has.",
+        "properties": {
+          "findings": {
+            "minimum": 0.0,
+            "title": "Findings",
+            "type": "integer"
+          },
+          "highest_severity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Severity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "lines": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lines"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "language",
+          "lines",
+          "findings",
+          "highest_severity"
+        ],
+        "title": "FileEntry",
+        "type": "object"
+      },
+      "FileTree": {
+        "description": "The scan's files and the files left out of it.",
+        "properties": {
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/FileEntry"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedFile"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "required": [
+          "files",
+          "skipped"
+        ],
+        "title": "FileTree",
+        "type": "object"
+      },
+      "Finding": {
+        "description": "One issue at one location.\n\nAttributes:\n    id: Unique id.\n    file_path: POSIX path relative to the upload root.\n    start_line: First affected line, 1-based.\n    end_line: Last affected line, inclusive.\n    start_column: 1-based column where the issue starts, when the tool reports it.\n    end_column: 1-based column where the issue ends, when the tool reports it.\n    category: Kind of issue.\n    severity: How urgent it is.\n    title: One-line summary of at most 80 characters.\n    message: What is wrong.\n    rationale: Why it matters; filled in by LLM review.\n    evidence: The offending code. Never contains a detected secret.\n    rule_id: The producing tool's rule identifier, such as ``F401`` or ``B602``.\n    sources: Tools or models that reported this issue.\n    confidence: 0 to 1; deterministic rules report 1.0.\n    status: Review state.\n    cwe: CWE identifier such as ``CWE-78``, when known.\n    suggestion: How to fix it, in a sentence; filled in by LLM review.\n    verified_by: Models that independently confirmed an issue another model reported.\n    ai_note: What AI review concluded when it questions the finding, such as why a\n        model dismissed it or disagreed with it.",
+        "properties": {
+          "ai_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Note"
+          },
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "confidence": {
+            "default": 1.0,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "cwe": {
+            "anyOf": [
+              {
+                "pattern": "^CWE-\\d+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cwe"
+          },
+          "end_column": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Column"
+          },
+          "end_line": {
+            "exclusiveMinimum": 0.0,
+            "title": "End Line",
+            "type": "integer"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence"
+          },
+          "file_path": {
+            "title": "File Path",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          },
+          "rule_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Id"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/Severity"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Sources",
+            "type": "array"
+          },
+          "start_column": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Column"
+          },
+          "start_line": {
+            "exclusiveMinimum": 0.0,
+            "title": "Start Line",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/FindingStatus",
+            "default": "open"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion"
+          },
+          "title": {
+            "maxLength": 80,
+            "title": "Title",
+            "type": "string"
+          },
+          "verified_by": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Verified By",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "file_path",
+          "start_line",
+          "end_line",
+          "start_column",
+          "end_column",
+          "category",
+          "severity",
+          "title",
+          "message",
+          "rationale",
+          "evidence",
+          "rule_id",
+          "sources",
+          "confidence",
+          "status",
+          "cwe",
+          "suggestion",
+          "verified_by",
+          "ai_note"
+        ],
+        "title": "Finding",
+        "type": "object"
+      },
+      "FindingDecision": {
+        "description": "A reviewer's decision on a finding. ``open`` restores a dismissed or rejected finding.",
+        "properties": {
+          "status": {
+            "enum": [
+              "open",
+              "accepted",
+              "rejected"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "FindingDecision",
+        "type": "object"
+      },
+      "FindingStatus": {
+        "description": "Where a finding stands in review.",
+        "enum": [
+          "open",
+          "dismissed_by_ai",
+          "needs_review",
+          "accepted",
+          "rejected"
+        ],
+        "title": "FindingStatus",
+        "type": "string"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "description": "Service liveness and the running version.",
+        "properties": {
+          "status": {
+            "const": "ok",
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "version"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "NotReported": {
+        "description": "Findings kept in the report but left out of its counts, by reason.",
+        "properties": {
+          "below_min_confidence": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Below Min Confidence",
+            "type": "integer"
+          },
+          "dismissed_by_ai": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Dismissed By Ai",
+            "type": "integer"
+          },
+          "rejected": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Rejected",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dismissed_by_ai",
+          "rejected",
+          "below_min_confidence"
+        ],
+        "title": "NotReported",
+        "type": "object"
+      },
+      "ProviderView": {
+        "description": "One enabled provider. ``external`` providers receive code only with consent.",
+        "properties": {
+          "external": {
+            "title": "External",
+            "type": "boolean"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "reopens_in_seconds": {
+            "minimum": 0.0,
+            "title": "Reopens In Seconds",
+            "type": "number"
+          },
+          "state": {
+            "$ref": "#/components/schemas/BreakerState"
+          }
+        },
+        "required": [
+          "name",
+          "model",
+          "external",
+          "state",
+          "reopens_in_seconds",
+          "reason"
+        ],
+        "title": "ProviderView",
+        "type": "object"
+      },
+      "ProvidersView": {
+        "description": "The enabled providers and whether models are real or mocked.",
+        "properties": {
+          "mode": {
+            "enum": [
+              "live",
+              "mock"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderView"
+            },
+            "title": "Providers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mode",
+          "providers"
+        ],
+        "title": "ProvidersView",
+        "type": "object"
+      },
+      "QualityScore": {
+        "description": "The score, its grade and every input needed to recompute it.",
+        "properties": {
+          "complex_functions": {
+            "minimum": 0.0,
+            "title": "Complex Functions",
+            "type": "integer"
+          },
+          "complexity_penalty": {
+            "minimum": 0.0,
+            "title": "Complexity Penalty",
+            "type": "number"
+          },
+          "finding_penalty": {
+            "minimum": 0.0,
+            "title": "Finding Penalty",
+            "type": "number"
+          },
+          "formula": {
+            "default": "100 - (25 x critical + 10 x high + 4 x medium + 1 x low) / max(1, KLOC) - 20 x share of functions with cyclomatic complexity >= 21",
+            "title": "Formula",
+            "type": "string"
+          },
+          "functions": {
+            "minimum": 0.0,
+            "title": "Functions",
+            "type": "integer"
+          },
+          "grade": {
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D",
+              "E"
+            ],
+            "title": "Grade",
+            "type": "string"
+          },
+          "kloc": {
+            "minimum": 0.0,
+            "title": "Kloc",
+            "type": "number"
+          },
+          "score": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Score",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "score",
+          "grade",
+          "kloc",
+          "finding_penalty",
+          "complexity_penalty",
+          "functions",
+          "complex_functions",
+          "formula"
+        ],
+        "title": "QualityScore",
+        "type": "object"
+      },
+      "ReportCounts": {
+        "description": "Headline numbers. ``findings`` and the breakdowns count reported findings only.",
+        "properties": {
+          "by_category": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Category",
+            "type": "object"
+          },
+          "by_severity": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Severity",
+            "type": "object"
+          },
+          "files_reviewed": {
+            "minimum": 0.0,
+            "title": "Files Reviewed",
+            "type": "integer"
+          },
+          "files_scanned": {
+            "minimum": 0.0,
+            "title": "Files Scanned",
+            "type": "integer"
+          },
+          "findings": {
+            "minimum": 0.0,
+            "title": "Findings",
+            "type": "integer"
+          },
+          "not_reported": {
+            "$ref": "#/components/schemas/NotReported"
+          }
+        },
+        "required": [
+          "files_scanned",
+          "files_reviewed",
+          "findings",
+          "by_severity",
+          "by_category",
+          "not_reported"
+        ],
+        "title": "ReportCounts",
+        "type": "object"
+      },
+      "ReportFormat": {
+        "description": "Download formats.",
+        "enum": [
+          "json",
+          "sarif",
+          "html"
+        ],
+        "title": "ReportFormat",
+        "type": "string"
+      },
+      "ReviewSummary": {
+        "description": "The executive summary of a review.",
+        "properties": {
+          "headline": {
+            "minLength": 1,
+            "title": "Headline",
+            "type": "string"
+          },
+          "recommended_next_steps": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Recommended Next Steps",
+            "type": "array"
+          },
+          "strengths": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Strengths",
+            "type": "array"
+          },
+          "top_risks": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TopRisk"
+            },
+            "title": "Top Risks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "headline",
+          "strengths",
+          "top_risks",
+          "recommended_next_steps"
+        ],
+        "title": "ReviewSummary",
+        "type": "object"
+      },
+      "ScanDetail": {
+        "description": "A scan's status, and its headline results once it has finished.\n\n``calls`` lists every model call attempt, so clients can show which provider saw which file.",
+        "properties": {
+          "ai_summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "calls": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CallRecord"
+            },
+            "title": "Calls",
+            "type": "array"
+          },
+          "scan": {
+            "$ref": "#/components/schemas/ScanInfo"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QualityScore"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReportCounts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "scan",
+          "summary",
+          "score",
+          "ai_summary",
+          "calls"
+        ],
+        "title": "ScanDetail",
+        "type": "object"
+      },
+      "ScanInfo": {
+        "description": "A scan's status and settings, as clients see them.",
+        "properties": {
+          "allow_external": {
+            "title": "Allow External",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "depth": {
+            "$ref": "#/components/schemas/Depth"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ScanStatus"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "status",
+          "depth",
+          "allow_external",
+          "created_at",
+          "started_at",
+          "finished_at",
+          "error"
+        ],
+        "title": "ScanInfo",
+        "type": "object"
+      },
+      "ScanStatus": {
+        "description": "Where a scan is in its life.",
+        "enum": [
+          "queued",
+          "running",
+          "done",
+          "failed"
+        ],
+        "title": "ScanStatus",
+        "type": "string"
+      },
+      "Severity": {
+        "description": "How urgently an issue needs attention, most severe first.",
+        "enum": [
+          "critical",
+          "high",
+          "medium",
+          "low",
+          "info"
+        ],
+        "title": "Severity",
+        "type": "string"
+      },
+      "SkipReason": {
+        "description": "Why a file was left out of the review. Skipping is not an error.",
+        "enum": [
+          "excluded_directory",
+          "lockfile",
+          "minified",
+          "too_large",
+          "binary",
+          "symlink",
+          "invalid_name",
+          "special_file",
+          "unreadable"
+        ],
+        "title": "SkipReason",
+        "type": "string"
+      },
+      "SkippedFile": {
+        "description": "A file that was present in the upload but not extracted.",
+        "properties": {
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/SkipReason"
+          }
+        },
+        "required": [
+          "path",
+          "reason"
+        ],
+        "title": "SkippedFile",
+        "type": "object"
+      },
+      "Task": {
+        "description": "Kinds of LLM work, each routed to the providers best suited to it.",
+        "enum": [
+          "review",
+          "style",
+          "verify",
+          "summarize"
+        ],
+        "title": "Task",
+        "type": "string"
+      },
+      "TopRisk": {
+        "description": "One of the most important problems named in a summary.",
+        "properties": {
+          "files": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "title": {
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "why": {
+            "default": "",
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "files",
+          "why"
+        ],
+        "title": "TopRisk",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Margin",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/health": {
+      "get": {
+        "description": "Report that the service is up.",
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/providers": {
+      "get": {
+        "description": "Enabled providers with their circuit-breaker state, such as paused after a quota error.",
+        "operationId": "list_providers_api_providers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvidersView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Providers",
+        "tags": [
+          "providers"
+        ]
+      }
+    },
+    "/api/scans": {
+      "post": {
+        "description": "Upload a source file or a ``.zip`` and start scanning it.\n\nHosted models receive code only when ``allow_external`` is true.",
+        "operationId": "create_scan_api_scans_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_scan_api_scans_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Scan",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/api/scans/{scan_id}": {
+      "delete": {
+        "description": "Stop the scan if it is running and delete the upload and everything derived from it.",
+        "operationId": "delete_scan_api_scans__scan_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scan_id",
+            "required": true,
+            "schema": {
+              "title": "Scan Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Scan",
+        "tags": [
+          "scans"
+        ]
+      },
+      "get": {
+        "description": "A scan's status, with its counts, score and AI summary once finished.",
+        "operationId": "get_scan_api_scans__scan_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scan_id",
+            "required": true,
+            "schema": {
+              "title": "Scan Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Scan",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/api/scans/{scan_id}/events": {
+      "get": {
+        "description": "The scan's events as server-sent events, replayed after ``Last-Event-ID``, then live.",
+        "operationId": "scan_events_api_scans__scan_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scan_id",
+            "required": true,
+            "schema": {
+              "title": "Scan Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "last-event-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last-Event-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "itemSchema": {
+                  "properties": {
+                    "data": {
+                      "type": "string"
+                    },
+                    "event": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "retry": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scan Events",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/api/scans/{scan_id}/files": {
+      "get": {
+        "description": "The scan's files with reported finding counts, and the files that were skipped.",
+        "operationId": "list_files_api_scans__scan_id__files_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scan_id",
+            "required": true,
+            "schema": {
+              "title": "Scan Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileTree"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Files",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/api/scans/{scan_id}/files/{path}": {
+      "get": {
+        "description": "The text of one of the scan's files, for the code viewer.",
+        "operationId": "read_file_api_scans__scan_id__files__path__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scan_id",
+            "required": true,
+            "schema": {
+              "title": "Scan Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileContent"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read File",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/api/scans/{scan_id}/findings": {
+      "get": {
+        "description": "Every finding, including those dismissed, rejected or below the confidence threshold.",
+        "operationId": "list_findings_api_scans__scan_id__findings_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scan_id",
+            "required": true,
+            "schema": {
+              "title": "Scan Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Finding"
+                  },
+                  "title": "Response List Findings Api Scans  Scan Id  Findings Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Findings",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/api/scans/{scan_id}/findings/{finding_id}": {
+      "patch": {
+        "description": "Accept, reject or restore a finding.",
+        "operationId": "decide_finding_api_scans__scan_id__findings__finding_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scan_id",
+            "required": true,
+            "schema": {
+              "title": "Scan Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "finding_id",
+            "required": true,
+            "schema": {
+              "title": "Finding Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindingDecision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Finding"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decide Finding",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/api/scans/{scan_id}/report": {
+      "get": {
+        "description": "The report as a JSON, SARIF or HTML file download.",
+        "operationId": "download_report_api_scans__scan_id__report_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scan_id",
+            "required": true,
+            "schema": {
+              "title": "Scan Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ReportFormat",
+              "default": "json"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Download Report",
+        "tags": [
+          "scans"
+        ]
+      }
+    }
+  }
+}

@@ -54,6 +54,11 @@ jobs:
       - name: Type check
         run: uv run mypy
 
+      - name: Check the OpenAPI schema is current
+        run: |
+          uv run python scripts/export_openapi.py
+          git diff --exit-code openapi.json
+
       - name: Test
         run: uv run pytest --cov --cov-report=term-missing
 
@@ -76,6 +81,11 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Check the API types match the schema
+        run: |
+          npm run api-types
+          git diff --exit-code src/api/schema.d.ts
 
       - name: Check formatting
         run: npm run format:check

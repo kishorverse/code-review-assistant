@@ -18,7 +18,7 @@ uv run uvicorn app.main:create_app --factory --reload
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/api/scans` | Upload a source file or `.zip` and start a scan |
-| `GET` | `/api/scans/{id}` | Status; counts, quality score and AI summary once done |
+| `GET` | `/api/scans/{id}` | Status; counts, quality score, AI summary and model calls once done |
 | `GET` | `/api/scans/{id}/events` | Live progress as server-sent events |
 | `GET` | `/api/scans/{id}/findings` | Every finding, whatever its status |
 | `PATCH` | `/api/scans/{id}/findings/{finding_id}` | Accept, reject or restore a finding |
@@ -84,7 +84,7 @@ events.addEventListener('status', (e) => {
 
 Results are available once the status is `done`. Before that, `/findings`, `/files` and `/report` answer `409`.
 
-- **`GET /api/scans/{id}`** adds `summary` (counts of reported findings and of those not reported, by reason), `score` (the quality score with its formula and inputs) and `ai_summary`.
+- **`GET /api/scans/{id}`** adds `summary` (counts of reported findings and of those not reported, by reason), `score` (the quality score with its formula and inputs), `ai_summary`, and `calls` (every model call attempt: task, provider, model, status, latency, tokens and file, the record of which model saw which file).
 - **`PATCH /api/scans/{id}/findings/{finding_id}`** takes `{"status": "accepted" | "rejected" | "open"}`. `open` restores a finding dismissed by AI review or rejected earlier. Counts, the score and every later report download reflect the decision. Statuses set by AI review (`dismissed_by_ai`, `needs_review`) cannot be set this way.
 - **`GET /api/scans/{id}/files/{path}`** serves only paths that are among the scan's extracted files; anything else, including traversal attempts, is `404`.
 - **`GET /api/scans/{id}/report`** returns an attachment with `X-Content-Type-Options: nosniff`, so the HTML report is downloaded rather than rendered in the API's origin. SARIF output validates against the SARIF 2.1.0 schema.
