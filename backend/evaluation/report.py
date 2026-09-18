@@ -77,6 +77,7 @@ class VariantResult:
         files: Files with a record; ``complete_files`` finished without failures
             and are the ones scored.
         models: Provider name to model id.
+        covered: The files that were scored.
         calls: Model call attempts by provider and status.
         latency_ms: Median and 95th percentile of answered calls, per provider.
         file_seconds: Median and 95th percentile time to scan one file.
@@ -89,6 +90,7 @@ class VariantResult:
     files: int
     complete_files: int
     models: dict[str, str]
+    covered: frozenset[str]
     calls: dict[str, dict[str, int]]
     latency_ms: dict[str, tuple[int, int]]
     tokens: tuple[int, int]
@@ -157,6 +159,7 @@ def variant_result(dataset: Dataset, records: Sequence[FileRecord], variant: str
         files=len(records),
         complete_files=len(complete),
         models=complete[0].models if complete else {},
+        covered=frozenset(covered),
         calls=_call_counts(calls),
         latency_ms=_latencies(calls),
         tokens=(sum(c.input_tokens for c in calls), sum(c.output_tokens for c in calls)),
@@ -280,7 +283,8 @@ def to_markdown(dataset: Dataset, results: Sequence[VariantResult]) -> str:
         else "",
         "## Cross-model verification\n\n" + _verification(results),
         "## Cost and routing\n\n" + _cost(results),
-        "## Labels found\n\n" + _labels(dataset, results),
+        "## Labels found\n\n✓ found, · missed, — file not completed by that configuration.\n\n"
+        + _labels(dataset, results),
     ]
     return "\n\n".join(section for section in sections if section) + "\n"
 
@@ -341,7 +345,7 @@ def _models(results: Sequence[VariantResult]) -> str:
 def _categories(results: Sequence[VariantResult]) -> str:
     categories = sorted({c for r in results for c in r.scorecard.by_category})
     rows = [
-        "| Category | " + " | ".join(r.variant for r in results) + " |",
+        "| Category | " + " | ".join(_name(r.variant, pinned=True) for r in results) + " |",
         "|---|" + "---|" * len(results),
     ]
     for category in categories:
@@ -360,7 +364,7 @@ def _categories(results: Sequence[VariantResult]) -> str:
 def _cwe(dataset: Dataset, results: Sequence[VariantResult]) -> str:
     cwes = sorted({lb.label.cwe for lb in dataset.labels if lb.label.cwe})
     rows = [
-        "| CWE | Labels | " + " | ".join(r.variant for r in results) + " |",
+        "| CWE | Labels | " + " | ".join(_name(r.variant, pinned=True) for r in results) + " |",
         "|---|---|" + "---|" * len(results),
     ]
     for cwe in cwes:
@@ -420,7 +424,10 @@ def _labels(dataset: Dataset, results: Sequence[VariantResult]) -> str:
     ]
     for located in dataset.labels:
         label = located.label
-        marks = ["✓" if label.id in r.scorecard.found else "·" for r in results]
+        marks = [
+            "—" if label.file not in r.covered else "✓" if label.id in r.scorecard.found else "·"
+            for r in results
+        ]
         rows.append(
             f"| {label.id} | {label.category.value} | {label.detection} | "
             + " | ".join(marks)
