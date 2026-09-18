@@ -9,7 +9,7 @@ Margin reviews a single source file or a zipped project in two passes.
 
 A router that knows each provider's rate limits sends every task to the best-suited model and falls back cleanly when a quota runs out. A verifier checks evidence and runs a second model on serious findings, so false positives are filtered out before you see them.
 
-> **Status:** in active development. Safe upload handling, structure-aware chunking, static analysis, the rate-limit-aware LLM router, hybrid LLM review with cross-model verification, the web API and HTML, JSON and SARIF reports work today; the web UI is being added next.
+> **Status:** in active development. Safe upload handling, structure-aware chunking, static analysis, the rate-limit-aware LLM router, hybrid LLM review with cross-model verification, the web API, the web UI and HTML, JSON and SARIF reports work today; the evaluation report is being added next.
 
 ## Planned features
 
@@ -81,13 +81,27 @@ Uploads and everything derived from them are deleted after `RETENTION_HOURS` (24
 
 ### Frontend
 
+Start the backend first, then:
+
 ```bash
 cd frontend
 npm ci
 npm run dev
 ```
 
-Open http://localhost:5173. Requests to `/api` are proxied to the backend.
+Open http://localhost:5173. Requests to `/api` are proxied to the backend. Drop a file or a `.zip`, pick a
+review depth, and decide whether code may go to hosted models. The scan page shows the pipeline, each
+analyzer and each model's calls live, then turns into a workspace: files, code with severity marks in the
+gutter, and finding cards you can accept or reject. See [Web UI](docs/ui.md).
+
+To try it without API keys, start the backend with `LLM_MODE=mock`.
+
+After changing an endpoint or response model, regenerate the frontend's API types:
+
+```bash
+cd backend && uv run python scripts/export_openapi.py
+cd ../frontend && npm run api-types
+```
 
 ### LLM providers
 
@@ -155,6 +169,7 @@ uv run pre-commit install
 - [LLM routing](docs/routing.md): providers, task routing, rate limits, circuit breakers, caching and the consent gate
 - [LLM review and verification](docs/review.md): depth, secret masking, prompts, grounding, judgements and cross-model checks
 - [Web API](docs/api.md): scans, live events, reviewer decisions, reports, storage and retention
+- [Web UI](docs/ui.md): upload, live scan, results workspace, state, design and accessibility
 
 ## License
 
