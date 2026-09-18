@@ -1,0 +1,83 @@
+{
+  "dataset": "seeded",
+  "version": 1,
+  "description": "Python modules written for this evaluation, with injected issues labeled by line. Files without labels are clean controls, several of which look risky but are safe.",
+  "labels": [
+    {"id": "user_repository/sql-injection", "file": "user_repository.py", "anchor": "query = (", "lines": 4, "category": "security", "cwe": "CWE-89", "severity": "high", "detection": "static", "description": "The email address is formatted into the SQL text, so a crafted address can change the query."},
+    {"id": "user_repository/page-offset", "file": "user_repository.py", "anchor": "offset = page * PAGE_SIZE", "category": "bug", "severity": "medium", "detection": "semantic", "description": "Pages start at 1, so the offset skips the first page; it should be (page - 1) * PAGE_SIZE."},
+
+    {"id": "backup_tool/shell-injection", "file": "backup_tool.py", "anchor": "subprocess.run(", "lines": 3, "category": "security", "cwe": "CWE-78", "severity": "high", "detection": "static", "description": "The label and paths are formatted into a shell command run with shell=True."},
+    {"id": "backup_tool/tar-traversal", "file": "backup_tool.py", "anchor": "bundle.extractall(destination)", "category": "security", "cwe": "CWE-22", "severity": "high", "detection": "static", "description": "Extracting an uploaded archive without a member filter lets entries write outside the destination."},
+
+    {"id": "config_loader/unsafe-yaml", "file": "config_loader.py", "anchor": "yaml.load(handle, Loader=yaml.Loader)", "category": "security", "cwe": "CWE-502", "severity": "high", "detection": "static", "description": "yaml.Loader can construct arbitrary Python objects; SafeLoader is needed."},
+    {"id": "config_loader/shared-defaults", "file": "config_loader.py", "anchor": "settings = DEFAULTS", "lines": 2, "category": "bug", "severity": "medium", "detection": "semantic", "description": "The defaults dict is updated in place, so each load leaks settings into every later load."},
+    {"id": "config_loader/unsafe-pickle", "file": "config_loader.py", "anchor": "return pickle.loads(blob)", "category": "security", "cwe": "CWE-502", "severity": "critical", "detection": "static", "description": "Unpickling data sent by a client allows arbitrary code execution."},
+
+    {"id": "auth_tokens/hardcoded-key", "file": "auth_tokens.py", "anchor": "SIGNING_KEY = ", "category": "security", "cwe": "CWE-798", "severity": "high", "detection": "static", "description": "The signing key is hardcoded in source."},
+    {"id": "auth_tokens/weak-random", "file": "auth_tokens.py", "anchor": "random.choice(TOKEN_ALPHABET)", "category": "security", "cwe": "CWE-330", "severity": "high", "detection": "static", "description": "Tokens come from the non-cryptographic random module."},
+    {"id": "auth_tokens/timing-compare", "file": "auth_tokens.py", "anchor": "return sign(token) == signature", "category": "security", "cwe": "CWE-208", "severity": "medium", "detection": "semantic", "description": "Signatures are compared with ==, which leaks timing; hmac.compare_digest is needed."},
+
+    {"id": "file_server/path-traversal", "file": "file_server.py", "anchor": "return DOWNLOADS / name", "category": "security", "cwe": "CWE-22", "severity": "high", "detection": "semantic", "description": "A name with .. segments or an absolute path escapes the downloads folder."},
+
+    {"id": "webhook_client/no-timeout", "file": "webhook_client.py", "anchor": "response = requests.post(", "category": "security", "cwe": "CWE-400", "severity": "medium", "detection": "static", "description": "The request has no timeout, so a stalled server blocks the caller indefinitely."},
+    {"id": "webhook_client/tls-disabled", "file": "webhook_client.py", "anchor": "verify=False,", "category": "security", "cwe": "CWE-295", "severity": "high", "detection": "static", "description": "Certificate verification is disabled."},
+    {"id": "webhook_client/ssrf", "file": "webhook_client.py", "anchor": "return requests.get(url, timeout=10).content", "category": "security", "cwe": "CWE-918", "severity": "high", "detection": "semantic", "description": "The server fetches any URL a user supplies, including internal addresses."},
+
+    {"id": "password_store/fast-hash", "file": "password_store.py", "anchor": "hashlib.md5(", "category": "security", "cwe": "CWE-916", "severity": "high", "detection": "static", "description": "Passwords are hashed with MD5, a fast hash unsuitable for passwords."},
+
+    {"id": "report_renderer/autoescape-off", "file": "report_renderer.py", "anchor": "autoescape=False", "category": "security", "cwe": "CWE-79", "severity": "high", "detection": "static", "description": "Templates render customer values without HTML escaping."},
+    {"id": "report_renderer/eval", "file": "report_renderer.py", "anchor": "eval(formula, {}, values)", "category": "security", "cwe": "CWE-95", "severity": "critical", "detection": "static", "description": "Customer-supplied formulas are evaluated as Python code."},
+
+    {"id": "inventory/mutable-default", "file": "inventory.py", "anchor": "seen: list[str] = []", "category": "bug", "severity": "medium", "detection": "static", "description": "The mutable default list is shared across calls, so tags are skipped in later sessions."},
+    {"id": "inventory/reorder-boundary", "file": "inventory.py", "anchor": "return item.quantity < REORDER_LEVEL", "category": "bug", "severity": "medium", "detection": "semantic", "description": "The docstring says 'to or below', but < misses the item exactly at the reorder level."},
+    {"id": "inventory/is-literal", "file": "inventory.py", "anchor": "if amount is 0:", "category": "bug", "severity": "medium", "detection": "static", "description": "Identity comparison with an int literal; == is needed."},
+    {"id": "inventory/negative-stock", "file": "inventory.py", "anchor": "item.quantity -= amount", "category": "bug", "severity": "medium", "detection": "semantic", "description": "Nothing stops stock from going negative, which the docstring promises."},
+
+    {"id": "billing/double-discount", "file": "billing.py", "anchor": "return taxed * (1 - discount)", "category": "bug", "severity": "high", "detection": "semantic", "description": "The discount is applied a second time after tax."},
+    {"id": "billing/empty-average", "file": "billing.py", "anchor": "return total / len(lines)", "category": "bug", "severity": "medium", "detection": "semantic", "description": "An invoice without lines divides by zero."},
+    {"id": "billing/cents-type", "file": "billing.py", "anchor": "return round(amount * 100, 2)", "category": "typing", "severity": "medium", "detection": "static", "description": "Returns a Decimal with two places where whole cents (int) are declared and expected."},
+
+    {"id": "date_ranges/end-excluded", "file": "date_ranges.py", "anchor": "for offset in range(count)", "category": "bug", "severity": "medium", "detection": "semantic", "description": "range(count) leaves out the end date the docstring includes."},
+    {"id": "date_ranges/naive-now", "file": "date_ranges.py", "anchor": "return expires_at < datetime.now()", "category": "bug", "severity": "high", "detection": "semantic", "description": "Comparing an aware datetime with naive datetime.now() raises TypeError."},
+
+    {"id": "retry/no-increment", "file": "retry.py", "anchor": "while attempt < attempts:", "category": "bug", "severity": "high", "detection": "semantic", "description": "attempt is never incremented, so a persistent ConnectionError retries forever."},
+    {"id": "retry/bare-except", "file": "retry.py", "anchor": "    except:", "category": "bug", "severity": "medium", "detection": "static", "description": "A bare except also swallows KeyboardInterrupt and SystemExit."},
+
+    {"id": "page_cache/get-not-recent", "file": "page_cache.py", "anchor": "return self._pages.get(key)", "category": "bug", "severity": "medium", "detection": "semantic", "description": "get() does not mark the page as recently used, so eviction ignores reads."},
+    {"id": "page_cache/evicts-newest", "file": "page_cache.py", "anchor": "self._pages.popitem(last=True)", "category": "bug", "severity": "high", "detection": "semantic", "description": "popitem(last=True) evicts the page just added instead of the least recently used one."},
+    {"id": "page_cache/mutate-while-iterating", "file": "page_cache.py", "anchor": "del self._pages[key]", "category": "bug", "severity": "high", "detection": "semantic", "description": "Deleting from the dict while iterating over it raises RuntimeError."},
+
+    {"id": "csv_export/unclosed-file", "file": "csv_export.py", "anchor": "handle = open(path", "category": "maintainability", "severity": "medium", "detection": "static", "description": "The file is opened without a context manager and never closed."},
+    {"id": "csv_export/return-in-finally", "file": "csv_export.py", "anchor": "return []", "category": "bug", "severity": "high", "detection": "static", "description": "return in finally discards the result and any exception; the function always returns []."},
+
+    {"id": "notifications/not-awaited", "file": "notifications.py", "anchor": "send_email(address, body)", "category": "bug", "severity": "high", "detection": "static", "description": "The coroutine is never awaited, so no email is sent."},
+    {"id": "notifications/blocking-sleep", "file": "notifications.py", "anchor": "time.sleep(0.5)", "category": "performance", "severity": "medium", "detection": "semantic", "description": "time.sleep blocks the event loop inside an async function; asyncio.sleep is needed."},
+
+    {"id": "latency_stats/median-unsorted", "file": "latency_stats.py", "anchor": "middle = len(samples) // 2", "category": "bug", "severity": "high", "detection": "semantic", "description": "The median is taken without sorting the samples first."},
+    {"id": "latency_stats/percentile-index", "file": "latency_stats.py", "anchor": "index = int(fraction * len(ordered))", "category": "bug", "severity": "medium", "detection": "semantic", "description": "fraction = 1 gives an index one past the end, raising IndexError."},
+
+    {"id": "shipping/optional-rate", "file": "shipping.py", "anchor": "return RATES.get(region)", "category": "typing", "severity": "medium", "detection": "static", "description": "dict.get can return None where float is declared; an unknown region fails later in estimate()."},
+    {"id": "shipping/missing-region", "file": "shipping.py", "anchor": "names = {\"domestic\": \"Domestic\", \"europe\": \"Europe\"}", "lines": 2, "category": "bug", "severity": "medium", "detection": "semantic", "description": "The 'world' region has a rate but no label, so region_label raises KeyError for it."},
+
+    {"id": "upload_manifest/syntax-error", "file": "upload_manifest.py", "anchor": "raise ValueError(\"size must be a non-negative integer\"", "lines": 2, "category": "bug", "severity": "high", "detection": "static", "description": "Missing closing parenthesis: the module does not parse."},
+
+    {"id": "search_index/list-membership", "file": "search_index.py", "anchor": "if tag in wanted:", "category": "performance", "severity": "low", "detection": "semantic", "description": "Membership tests against a list inside a nested loop; a set makes each test O(1)."},
+    {"id": "search_index/quadratic-unique", "file": "search_index.py", "anchor": "if tag not in seen:", "category": "performance", "severity": "low", "detection": "semantic", "description": "Deduplicating through a list is quadratic; a dict or set keeps order in linear time."},
+
+    {"id": "log_scanner/compile-in-loop", "file": "log_scanner.py", "anchor": "pattern = re.compile(", "category": "performance", "severity": "medium", "detection": "semantic", "description": "Each code's pattern is recompiled for every line; compile once before the loop."},
+    {"id": "log_scanner/read-whole-file", "file": "log_scanner.py", "anchor": "lines = path.read_text(encoding=\"utf-8\").splitlines()", "category": "performance", "severity": "low", "detection": "semantic", "description": "The whole log is read to get its first line."},
+
+    {"id": "payment_matching/nested-join", "file": "payment_matching.py", "anchor": "for order in orders", "category": "performance", "severity": "medium", "detection": "semantic", "description": "Every payment scans every order; indexing orders by id makes this linear."},
+    {"id": "payment_matching/count-in-loop", "file": "payment_matching.py", "anchor": "ids.count(pid) > 1", "category": "performance", "severity": "medium", "detection": "semantic", "description": "list.count inside a comprehension is quadratic; a Counter is linear."},
+
+    {"id": "legacy_helpers/multiple-imports", "file": "legacy_helpers.py", "anchor": "import os, sys", "category": "style", "severity": "low", "detection": "static", "description": "PEP 8: one import per line."},
+    {"id": "legacy_helpers/unused-import", "file": "legacy_helpers.py", "anchor": "import os, sys", "category": "maintainability", "severity": "low", "detection": "static", "description": "sys is imported but never used."},
+    {"id": "legacy_helpers/function-name", "file": "legacy_helpers.py", "anchor": "def ComputeTotal(values):", "category": "style", "severity": "low", "detection": "static", "description": "PEP 8: function names are lowercase with underscores."},
+    {"id": "legacy_helpers/none-comparison", "file": "legacy_helpers.py", "anchor": "if v != None:", "category": "style", "severity": "low", "detection": "static", "description": "PEP 8: compare with None using 'is not'."},
+    {"id": "legacy_helpers/class-name", "file": "legacy_helpers.py", "anchor": "class report_row:", "category": "style", "severity": "low", "detection": "static", "description": "PEP 8: class names use CapWords."},
+    {"id": "legacy_helpers/two-statements", "file": "legacy_helpers.py", "anchor": "self.name = name; self.amount = amount", "category": "style", "severity": "low", "detection": "static", "description": "PEP 8: one statement per line."},
+    {"id": "legacy_helpers/lambda-assignment", "file": "legacy_helpers.py", "anchor": "format_amount = lambda", "category": "style", "severity": "low", "detection": "static", "description": "PEP 8: use def instead of assigning a lambda."},
+    {"id": "legacy_helpers/missing-docstring", "file": "legacy_helpers.py", "anchor": "def parse_flag(value):", "category": "style", "severity": "low", "detection": "semantic", "description": "PEP 257: a public function without a docstring."},
+    {"id": "legacy_helpers/long-line", "file": "legacy_helpers.py", "anchor": "return os.environ.get(\"REPORT_DIR\"", "category": "style", "severity": "low", "detection": "static", "description": "PEP 8: the line is longer than 79 characters."}
+  ]
+}
