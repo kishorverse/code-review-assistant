@@ -2,7 +2,7 @@
 
 How well Margin finds real issues, what the models add to static analysis, how the router copes with
 free-tier limits, and how long scans take. Every number below comes from the runs committed in
-`eval/results/`, and can be recomputed without API keys (see [Reproducing](#9-reproducing)).
+`eval/results/`, and can be recomputed without API keys (see [Reproducing](#10-reproducing)).
 
 ## Summary
 
@@ -339,6 +339,23 @@ Every number in this report came through the conditions the router exists for:
   parse still chunks it, Ruff reports the syntax error (as a bug, after the fix below), and models
   reviewed the rest of the file.
 
+### Across codebases and languages
+
+The same CLI on three codebases, static analysis at the default depth, on 19 September 2026:
+
+| Codebase | Language | Files | Findings | Seconds | Analyzers |
+|---|---|---|---|---|---|
+| Seeded dataset | Python | 32 | 33 | 10.0 | all 8 ran |
+| Margin's backend (without tests) | Python | 115 | 18 | 8.2 | all 8 ran; the project's declared 100-column limit applied |
+| Margin's frontend | TypeScript and TSX | 42 | 5 | 7.4 | the language-agnostic ones (Lizard, detect-secrets, Opengrep) |
+
+A standard-depth review of one TSX file (`ResultsView.tsx`) ran end to end as well: Lizard's two
+complexity findings were confirmed by models, and the style model added four remarks. NVIDIA was
+unavailable and Gemini's and Hugging Face's quotas were spent, so its bug and security review fell back
+to the local model: a working review, but a shallow one. The GitHub Action runs the same scan over
+the whole repository on every push. A labeled evaluation on other languages and on third-party
+repositories is still future work.
+
 ## 7. What the evaluation changed in Margin
 
 The evaluation, and scanning Margin's own code while it ran, found five real problems, all fixed:
@@ -371,7 +388,31 @@ The evaluation, and scanning Margin's own code while it ran, found five real pro
 - **No real-world repositories** in this round; the brief's robustness set and public datasets
   (BugsInPy, CVEfixes) are left for future work.
 
-## 9. Reproducing
+## 9. Recommendations
+
+In order of expected benefit:
+
+1. **Never fall back to a much weaker model for hosted scans.** Most of the routed runs' false positives
+   came from tasks that fell back to the local 4B model. A routing option to skip a task (and say so in
+   the report) rather than hand it to a model below a quality bar would have kept routed precision near
+   the single-reviewer 0.88.
+2. **Use the strongest available model as the verifier, and let disputes hide findings by default.**
+   The local verifier did not help; Gemini, the most accurate reviewer, is the natural verifier, and with a
+   verifier that good a disputed AI-only finding could be hidden instead of only flagged.
+3. **Merge AI findings into the static finding they restate.** A model sometimes files its own copy of
+   an issue an analyzer already reported on the same line (a hardcoded key reported by both
+   detect-secrets and the model), which costs precision without adding information.
+4. **Pay for one fast provider.** gpt-oss answered in 1.3 seconds against Nemotron's 30; hybrid scans
+   would drop from minutes to seconds, which is what near-real-time feedback in an editor needs.
+5. **Grow the evaluation:** collect the human ratings, add public datasets (BugsInPy, CVEfixes) and
+   several real repositories, and label with more than one person.
+6. **Learn from reviewers' decisions.** Accepted and rejected findings are already recorded per scan;
+   feeding them back (suppressing rules a team always rejects, adding accepted examples to prompts) is
+   the stretch goal the data is ready for.
+7. **Offer fixes as diffs with a preview**, validated by re-running the analyzers on the patched code
+   before they are shown.
+
+## 10. Reproducing
 
 From `backend/`:
 
