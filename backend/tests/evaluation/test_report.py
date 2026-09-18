@@ -5,7 +5,7 @@ from pathlib import Path
 from app.findings import Category, Finding, FindingStatus, Severity
 from app.llm.models import CallRecord, CallStatus, Task
 from evaluation.dataset import load_dataset
-from evaluation.report import embed, evaluate, to_markdown
+from evaluation.report import common_model_results, embed, evaluate, to_markdown
 from evaluation.runner import FileRecord
 
 LABELS = [
@@ -154,3 +154,25 @@ def test_embedded_tables_are_replaced_and_everything_else_is_kept() -> None:
         "<!-- TABLE:cwe -->\n| cwe |\n<!-- /TABLE -->\n"
     )
     assert embed(updated, {"models": "| new |", "cwe": "| cwe |"}) == updated
+
+
+def test_models_are_also_compared_on_the_files_they_all_completed(tmp_path: Path) -> None:
+    dataset = load_dataset(dataset_at(tmp_path / "data"))
+    runs = tmp_path / "runs"
+    runs.mkdir()
+    nvidia = [record("a.py", []), record("b.py", [])]
+    gemini = [
+        r.model_copy(update={"run": "model-gemini", "variants": {"F-gemini": []}})
+        for r in [record("a.py", []), record("b.py", [], complete=False)]
+    ]
+    for name, records in (("model-nvidia", nvidia), ("model-gemini", gemini)):
+        (runs / f"{name}.jsonl").write_text(
+            "".join(r.model_dump_json() + "\n" for r in records), encoding="utf-8"
+        )
+
+    common = common_model_results(dataset, runs)
+
+    assert {r.variant: r.covered for r in common} == {
+        "F-gemini": frozenset({"a.py"}),
+        "F-nvidia": frozenset({"a.py"}),
+    }
