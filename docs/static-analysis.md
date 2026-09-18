@@ -67,6 +67,7 @@ Other properties of every tool process:
 ## 4. Robustness
 
 - **mypy.** A single file with a syntax error stops mypy for the whole project. Files are therefore pre-checked with `ast.parse` (parsing never executes code), and only parseable files are type-checked; Ruff still reports the syntax errors.
+- **Python version.** Isolated Ruff would assume its own default target, which predates Python 3.11, so `except ExceptionGroup` was reported as an undefined name (a high-severity false positive). Ruff now targets the version the upload declares: `tool.ruff.target-version` or the lower bound of `requires-python` in the top-most `pyproject.toml`, read with `tomllib` and never executed. Without a declaration it assumes 3.11, since 3.10 reaches end of life in October 2026.
 - **Duplicate module names.** Uploads often contain several `utils.py` files. `MYPYPATH` plus `--explicit-package-bases` keeps them distinct.
 - **Large projects.** File lists go through argument files or directory arguments, so projects of any size stay within command-line limits.
 - **Windows.** Opengrep needs `AppData\Local` inside the redirected profile directory; the analyzer creates it.

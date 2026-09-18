@@ -73,6 +73,35 @@ async def test_ignore_files_inside_the_upload_cannot_hide_code(
     assert {"F401", "B006", "E722"} <= by_rule(result.findings).keys()
 
 
+NEWER_BUILTIN = """
+    def run(tasks):
+        try:
+            tasks()
+        except ExceptionGroup as group:
+            return group.exceptions
+        return ()
+"""
+
+
+async def test_newer_builtins_are_not_undefined_names(make_target: TargetFactory) -> None:
+    target = make_target({"pkg/app.py": NEWER_BUILTIN})
+
+    result = await RuffAnalyzer().analyze(target)
+
+    assert "F821" not in by_rule(result.findings)
+
+
+async def test_the_python_version_the_upload_declares_is_respected(
+    make_target: TargetFactory,
+) -> None:
+    pyproject = '[project]\nrequires-python = ">=3.9"\n'
+    target = make_target({"pkg/app.py": NEWER_BUILTIN, "pyproject.toml": pyproject})
+
+    result = await RuffAnalyzer().analyze(target)
+
+    assert "F821" in by_rule(result.findings)
+
+
 def test_applies_only_to_python_projects(make_target: TargetFactory) -> None:
     assert not RuffAnalyzer().applies_to(make_target({"web/app.js": "let x;\n"}))
 
