@@ -1,0 +1,84 @@
+name: Margin review
+
+# Margin reviews this repository and publishes its findings to GitHub code
+# scanning (Security > Code scanning), as SARIF.
+#
+# Static analysis runs by default and needs no keys. For LLM review, set the
+# repository variable MARGIN_DEPTH to quick, standard or deep, the model ids as
+# variables (NVIDIA_MODEL, GEMINI_MODEL, ...) and the keys as secrets
+# (NVIDIA_API_KEY, GEMINI_API_KEY, HF_TOKEN). Code then goes to those hosted
+# providers, with detected secrets masked first.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: margin-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: Review
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Install Margin
+        working-directory: backend
+        run: uv sync --locked
+
+      - name: Install Opengrep
+        env:
+          OPENGREP_VERSION: v1.30.0
+          # Public release checksum, not a secret.
+          OPENGREP_SHA256: 35779bdd72e92129c8df2a77f0c55e8c08356801ea92591ef32108d6b28d564c  # pragma: allowlist secret
+        run: |
+          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/opengrep" \
+            "https://github.com/opengrep/opengrep/releases/download/${OPENGREP_VERSION}/opengrep_manylinux_x86"
+          echo "${OPENGREP_SHA256}  $RUNNER_TEMP/opengrep" | sha256sum --check --strict
+          mkdir -p "$HOME/.local/bin"
+          install -m 0755 "$RUNNER_TEMP/opengrep" "$HOME/.local/bin/opengrep"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # The evaluation dataset and the tests contain vulnerable code on purpose.
+      - name: Review the repository
+        working-directory: backend
+        env:
+          DEPTH: ${{ vars.MARGIN_DEPTH || 'static' }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          NVIDIA_MODEL: ${{ vars.NVIDIA_MODEL }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          HF_MODEL_LARGE: ${{ vars.HF_MODEL_LARGE }}
+          HF_MODEL_SMALL: ${{ vars.HF_MODEL_SMALL }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          consent=()
+          if [ "$DEPTH" != "static" ]; then consent=(--allow-external); fi
+          uv run margin scan .. --depth "$DEPTH" "${consent[@]}" \
+            --exclude eval --exclude backend/tests --exclude frontend/src/test \
+            --format sarif --output "$RUNNER_TEMP/margin.sarif"
+
+      - name: Upload to code scanning
+        # Pull requests from forks get a read-only token and cannot upload.
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        with:
+          sarif_file: ${{ runner.temp }}/margin.sarif
+          category: margin
