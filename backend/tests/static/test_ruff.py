@@ -5,7 +5,7 @@ import pytest
 
 from app.errors import AnalyzerError
 from app.findings import Category, Severity
-from app.static.analyzers.ruff import RuffAnalyzer, classify, parse_output
+from app.static.analyzers.ruff import RuffAnalyzer, classify, parse_output, rule_code
 from tests.static.conftest import TargetFactory, by_rule
 
 SAMPLE = """
@@ -123,6 +123,24 @@ def test_classifies_rules_by_most_specific_prefix(
     code: str | None, expected: tuple[Category, Severity]
 ) -> None:
     assert classify(code) == expected
+
+
+@pytest.mark.parametrize(
+    ("reported", "expected"),
+    [("E501", "E501"), ("PERF401", "PERF401"), (None, None), ("invalid-syntax", None)],
+)
+def test_only_rule_codes_count_as_rules(reported: str | None, expected: str | None) -> None:
+    assert rule_code(reported) == expected
+
+
+async def test_syntax_errors_are_reported_as_bugs(make_target: TargetFactory) -> None:
+    target = make_target({"pkg/broken.py": "def total(values:\n    return sum(values)\n"})
+
+    result = await RuffAnalyzer().analyze(target)
+
+    syntax_errors = [f for f in result.findings if f.rule_id == "syntax-error"]
+    assert syntax_errors
+    assert {(f.category, f.severity) for f in syntax_errors} == {(Category.BUG, Severity.MEDIUM)}
 
 
 def test_parse_skips_files_outside_the_root_and_handles_syntax_errors(tmp_path: Path) -> None:

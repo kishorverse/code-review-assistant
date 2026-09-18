@@ -7,6 +7,7 @@ Security rules (``S``) are left to Bandit, which reports CWE ids and confidence.
 """
 
 import json
+import re
 from pathlib import Path
 
 from app.errors import AnalyzerError
@@ -39,6 +40,7 @@ _CLASSIFICATION: dict[str, tuple[Category, Severity]] = {
     "N": (Category.STYLE, Severity.LOW),
 }
 _SYNTAX_ERROR = (Category.BUG, Severity.MEDIUM)
+_RULE_CODE = re.compile(r"[A-Z]+[0-9]+")
 
 
 class RuffAnalyzer:
@@ -76,6 +78,15 @@ class RuffAnalyzer:
         return AnalyzerResult(findings=parse_output(result.stdout, target.root))
 
 
+def rule_code(code: str | None) -> str | None:
+    """The lint rule a diagnostic reports, or ``None`` for a syntax error.
+
+    Ruff reports syntax errors without a code before 0.15 and as ``invalid-syntax``
+    since; neither is a rule code such as ``E501``.
+    """
+    return code if code is not None and _RULE_CODE.fullmatch(code) else None
+
+
 def classify(code: str | None) -> tuple[Category, Severity]:
     """Category and severity for a Ruff rule code; ``None`` means a syntax error."""
     if code is None:
@@ -102,7 +113,7 @@ def parse_output(stdout: str, root: Path) -> list[Finding]:
         path = relative_to_root(diagnostic["filename"], root)
         if path is None:
             continue
-        code = diagnostic.get("code")
+        code = rule_code(diagnostic.get("code"))
         category, severity = classify(code)
         start = diagnostic["location"]
         end = diagnostic.get("end_location") or start
