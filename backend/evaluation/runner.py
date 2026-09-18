@@ -267,7 +267,7 @@ async def _run_pass(
             async with semaphore:
                 record = await scan_file(spec, dataset, name, router, analyzers, base.get(name, []))
             async with lock:
-                with path.open("a", encoding="utf-8") as handle:
+                with path.open("a", encoding="utf-8", newline="\n") as handle:
                     handle.write(record.model_dump_json() + "\n")
             return record
 

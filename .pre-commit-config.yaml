@@ -3,6 +3,8 @@
 #
 # eval/datasets/ holds code with deliberately injected bugs, style issues and a
 # fake secret for the evaluation; linters must not "fix" them.
+# eval/results/ and eval/human_eval/ are generated data full of finding ids, which
+# are hashes and look like secrets to a scanner.
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
@@ -34,4 +36,4 @@ repos:
     hooks:
       - id: detect-secrets
         args: ["--baseline", ".secrets.baseline"]
-        exclude: (package-lock\.json$|uv\.lock$|^eval/datasets/)
+        exclude: (package-lock\.json$|uv\.lock$|^eval/(datasets|results|human_eval)/)
