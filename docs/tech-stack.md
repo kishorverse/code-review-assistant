@@ -66,7 +66,7 @@ A custom asyncio router, about 300 lines, sits between the pipeline and the prov
 | Mechanism | Purpose |
 |---|---|
 | Role-based preference lists | Each task (`review`, `style`, `verify`, `summarize`) has an ordered list of providers. |
-| Token buckets (RPM / TPM / RPD) | Stay below each provider's limits, with a 20 % safety margin. |
+| Sliding windows (RPM / RPD) and a token bucket (TPM) | Stay below each provider's limits, with a 20 % safety margin. |
 | Concurrency semaphores | Prevent bursts that trigger rate limiting. |
 | Circuit breakers | Stop calling a provider after 429s, quota errors or repeated failures, and probe again later. |
 | Fallbacks | Route to the next provider when one is unavailable; `verify` always excludes the provider that produced the finding. |

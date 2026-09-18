@@ -1,6 +1,6 @@
 import pytest
 
-from app.llm.limits import RateLimiter, RateLimits, TokenBucket
+from app.llm.limits import RateLimiter, RateLimits, SlidingWindow, TokenBucket
 from tests.llm.conftest import FakeClock
 
 
@@ -64,7 +64,38 @@ def test_daily_limit_is_enforced(clock: FakeClock) -> None:
     for _ in range(10):
         limiter.reserve(1)
 
-    assert limiter.wait_time(1) == pytest.approx(8_640.0)
+    assert limiter.wait_time(1) == pytest.approx(86_400.0)
+
+
+def test_no_window_ever_holds_more_than_the_limit(clock: FakeClock) -> None:
+    # A full bucket refilling while spent would let 8 through in the first minute.
+    window = SlidingWindow(capacity=4, window_seconds=60, clock=clock)
+
+    slots = [window.reserve() for _ in range(10)]
+
+    assert slots == [1000.0] * 4 + [1060.0] * 4 + [1120.0] * 2
+    assert all(sum(start - 60 < other <= start for other in slots) <= 4 for start in slots)
+
+
+def test_a_full_window_waits_for_its_oldest_request_to_leave(clock: FakeClock) -> None:
+    window = SlidingWindow(capacity=2, window_seconds=60, clock=clock)
+    window.reserve()
+    clock.advance(10)
+    window.reserve()
+    clock.advance(20)
+
+    assert window.wait_time() == pytest.approx(30.0)
+    clock.advance(30)
+    assert window.wait_time() == 0.0
+
+
+def test_a_cancelled_booking_frees_its_slot(clock: FakeClock) -> None:
+    window = SlidingWindow(capacity=1, window_seconds=60, clock=clock)
+    slot = window.reserve()
+
+    window.cancel(slot)
+
+    assert window.wait_time() == 0.0
 
 
 def test_settle_returns_unused_tokens(clock: FakeClock) -> None:

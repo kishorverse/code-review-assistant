@@ -17,7 +17,7 @@ A router that knows each provider's rate limits sends every task to the best-sui
 - **Style:** deviations from established guides (PEP 8 / PEP 257 for Python).
 - **Optimization:** performance and maintainability suggestions driven by complexity metrics.
 - **Hybrid, grounded review:** static findings are passed to the LLMs as structured input, and every LLM finding must cite real lines and quote real code.
-- **Rate-limit-aware routing:** token buckets, circuit breakers, role-based provider assignment, fallbacks and a response cache.
+- **Rate-limit-aware routing:** sliding-window rate limits, circuit breakers, role-based provider assignment, fallbacks and a response cache.
 - **Interactive and batch modes:** a web UI with live scan progress, a CLI, and SARIF output for CI/CD.
 - **Privacy:** explicit consent before any code leaves the machine, secret redaction before every LLM call, and automatic deletion of uploads.
 - **Evaluation:** precision/recall/F1, style accuracy, latency and robustness on a labeled dataset.

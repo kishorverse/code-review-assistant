@@ -73,7 +73,9 @@ Calls run concurrently, so outcomes can arrive out of order. A pause is never sh
 
 ## Rate limits
 
-Each provider has token buckets for requests per minute, tokens per minute and requests per day. Buckets refill continuously and are sized at `safety` × the configured limit (0.8 by default). Reservations may take a bucket into debt, so concurrent requests never overspend it. Providers that draw on one account (`hf-large` and `hf-small`) share one set of buckets.
+Each provider's requests per minute and per day are counted in sliding windows, and its tokens per minute in a continuously refilling token bucket, all sized at `safety` × the configured limit (0.8 by default). A request books the earliest time it may be sent, which can lie in the future, so concurrent requests queue instead of overspending. Providers that draw on one account (`hf-large` and `hf-small`) share one limiter.
+
+Requests use windows because providers count them in windows. The first version used token buckets for requests too, but a bucket that starts full and refills while it is spent lets through up to twice its capacity in the first minute. With Gemini's free tier of five requests a minute that drew 429s during the evaluation, and the routing simulation showed the same effect on fallback providers during an outage (see [evaluation](evaluation.md)).
 
 The limits in `providers.yaml` are conservative defaults:
 
