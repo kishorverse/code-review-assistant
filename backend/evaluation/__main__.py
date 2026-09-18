@@ -31,9 +31,13 @@ def check() -> None:
 
 @app.command(name="run")
 def run_command(
-    kind: Annotated[RunKind, typer.Argument(help="static, llm-only, hybrid or model.")],
+    kind: Annotated[RunKind, typer.Argument(help="static, llm-only, hybrid, model or verify.")],
     provider: Annotated[
-        str | None, typer.Option(help="The single provider for a model run.")
+        str | None,
+        typer.Option(help="The single provider for model, verify or llm-only runs."),
+    ] = None,
+    base: Annotated[
+        str | None, typer.Option(help="For verify runs: the model-<provider> run to check.")
     ] = None,
     files: Annotated[
         list[str] | None, typer.Option("--file", help="Only these dataset files.")
@@ -47,7 +51,7 @@ def run_command(
 ) -> None:
     """Run one configuration over the dataset, resuming unless --fresh."""
     configure_logging("ERROR", "console")
-    spec = RunSpec(kind, provider)
+    spec = RunSpec(kind, provider, base)
     records = asyncio.run(
         run(
             spec,

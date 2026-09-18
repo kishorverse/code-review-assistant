@@ -41,6 +41,12 @@ def record(name: str, *, complete: bool, run_name: str = "static") -> FileRecord
         (RunSpec(RunKind.LLM_ONLY), "llm-only", ("B",)),
         (RunSpec(RunKind.HYBRID), "hybrid", ("D", "E")),
         (RunSpec(RunKind.MODEL, "nvidia"), "model-nvidia", ("F-nvidia",)),
+        (RunSpec(RunKind.LLM_ONLY, "nvidia"), "llm-only-nvidia", ("B-nvidia",)),
+        (
+            RunSpec(RunKind.VERIFY, "gemini", "model-nvidia"),
+            "verify-model-nvidia-by-gemini",
+            ("E-nvidia+gemini",),
+        ),
     ],
 )
 def test_each_run_names_the_configurations_it_records(
@@ -50,12 +56,29 @@ def test_each_run_names_the_configurations_it_records(
 
 
 @pytest.mark.parametrize(
-    "spec_args",
-    [(RunKind.MODEL, None), (RunKind.HYBRID, "nvidia"), (RunKind.MODEL, "openai")],
+    ("spec_args", "message"),
+    [
+        ((RunKind.MODEL, None, None), "provider is required"),
+        ((RunKind.VERIFY, None, "model-nvidia"), "provider is required"),
+        ((RunKind.HYBRID, "nvidia", None), "take no provider"),
+        ((RunKind.MODEL, "openai", None), "unknown provider"),
+        ((RunKind.VERIFY, "gemini", None), "needs a base run"),
+        ((RunKind.MODEL, "gemini", "model-nvidia"), "needs a base run"),
+        ((RunKind.VERIFY, "gemini", "hybrid"), "model-<provider>"),
+    ],
 )
-def test_a_provider_goes_with_model_runs_only(spec_args: tuple[RunKind, str | None]) -> None:
-    with pytest.raises(ValueError, match="provider"):
+def test_runs_take_the_options_that_make_sense_for_them(
+    spec_args: tuple[RunKind, str | None, str | None], message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
         RunSpec(*spec_args)
+
+
+def test_single_provider_runs_leave_out_style_review() -> None:
+    assert RunSpec(RunKind.MODEL, "nvidia").review_only
+    assert RunSpec(RunKind.LLM_ONLY, "nvidia").review_only
+    assert not RunSpec(RunKind.LLM_ONLY).review_only
+    assert not RunSpec(RunKind.HYBRID).review_only
 
 
 def test_model_runs_disable_every_other_provider() -> None:

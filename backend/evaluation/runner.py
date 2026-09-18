@@ -14,6 +14,11 @@ Runs and the configurations they produce:
   calls, so the difference between them is the verifier alone.
 - ``model-<provider>``: F, the review task of D with a single provider, for
   comparing models. Style review is left out to fit free-tier quotas.
+- ``llm-only-<provider>``: the review task of B with a single provider, the
+  counterpart of ``model-<provider>`` for an ablation with one reviewer.
+- ``verify-model-<reviewer>-by-<verifier>``: ``E-<reviewer>+<verifier>``, the
+  findings of ``model-<reviewer>`` cross-checked by another provider, from
+  medium severity up as in deep scans.
 """
 
 import asyncio
@@ -35,7 +40,7 @@ from app.ingest.storage import ScanStorage, new_scan_id
 from app.llm.factory import build_router
 from app.llm.models import CallRecord
 from app.llm.router import Router
-from app.pipeline import ScanSettings, run_scan, upload_ingest
+from app.pipeline import ScanResult, ScanSettings, run_scan, upload_ingest
 from app.review.planner import Depth, ReviewOptions
 from app.review.session import ReviewSession
 from app.static.base import Analyzer
@@ -60,6 +65,7 @@ class RunKind(StrEnum):
     LLM_ONLY = "llm-only"
     HYBRID = "hybrid"
     MODEL = "model"
+    VERIFY = "verify"
 
 
 @dataclass(frozen=True)
@@ -67,22 +73,41 @@ class RunSpec:
     """One run over a dataset.
 
     Attributes:
-        provider: For ``model`` runs, the only provider the router may use.
+        provider: The only provider the router may use. Required for ``model`` and
+            ``verify`` runs; optional for ``llm-only``, which it limits to review.
+        base: For ``verify`` runs, the ``model-<provider>`` run whose findings are
+            cross-checked.
     """
 
     kind: RunKind
     provider: str | None = None
+    base: str | None = None
 
     def __post_init__(self) -> None:
-        if (self.kind is RunKind.MODEL) != (self.provider is not None):
-            raise ValueError("a provider is required for model runs, and only for them")
+        if self.kind in (RunKind.MODEL, RunKind.VERIFY) and self.provider is None:
+            raise ValueError("a provider is required for model and verify runs")
+        if self.provider is not None and self.kind in (RunKind.STATIC, RunKind.HYBRID):
+            raise ValueError("static and hybrid runs take no provider")
         if self.provider is not None and self.provider not in PROVIDER_MODEL_SETTINGS:
             raise ValueError(f"unknown provider {self.provider}")
+        if (self.kind is RunKind.VERIFY) != (self.base is not None):
+            raise ValueError("a verify run needs a base run, and only it takes one")
+        if self.base is not None and not self.base.startswith("model-"):
+            raise ValueError("a verify run cross-checks a model-<provider> run")
 
     @property
     def name(self) -> str:
         """File-name friendly run name."""
-        return f"model-{self.provider}" if self.provider else self.kind.value
+        if self.kind is RunKind.VERIFY:
+            return f"verify-{self.base}-by-{self.provider}"
+        return f"{self.kind.value}-{self.provider}" if self.provider else self.kind.value
+
+    @property
+    def review_only(self) -> bool:
+        """Whether style review is left out, as in single-provider runs."""
+        return self.kind is RunKind.MODEL or (
+            self.kind is RunKind.LLM_ONLY and self.provider is not None
+        )
 
     @property
     def variants(self) -> tuple[str, ...]:
@@ -90,10 +115,17 @@ class RunSpec:
         if self.kind is RunKind.STATIC:
             return ("A",)
         if self.kind is RunKind.LLM_ONLY:
-            return ("B",)
+            return (f"B-{self.provider}",) if self.provider else ("B",)
         if self.kind is RunKind.HYBRID:
             return ("D", "E")
+        if self.kind is RunKind.VERIFY:
+            return (f"E-{self.base_variant.removeprefix('F-')}+{self.provider}",)
         return (f"F-{self.provider}",)
+
+    @property
+    def base_variant(self) -> str:
+        """The configuration a verify run starts from."""
+        return f"F-{(self.base or '').removeprefix('model-')}"
 
 
 class FileRecord(BaseModel):
@@ -181,18 +213,30 @@ async def run(
     for number in range(rounds):
         if number:
             await asyncio.sleep(wait_seconds)
-        batch = await _run_pass(spec, dataset, wanted, concurrency, path)
+        batch = await _run_pass(spec, dataset, wanted, concurrency, path, runs_dir)
         if all(record.complete for record in batch):
             break
     return {name: record for name, record in load_records(path).items() if name in wanted}
 
 
 async def _run_pass(
-    spec: RunSpec, dataset: Dataset, files: Sequence[str], concurrency: int, path: Path
+    spec: RunSpec,
+    dataset: Dataset,
+    files: Sequence[str],
+    concurrency: int,
+    path: Path,
+    runs_dir: Path,
 ) -> list[FileRecord]:
     """Scan the files not yet complete, with a fresh router."""
     done = {name for name, record in load_records(path).items() if record.complete}
-    pending = [name for name in files if name not in done]
+    base: dict[str, list[Finding]] = {}
+    if spec.base is not None:
+        base = {
+            name: record.variants[spec.base_variant]
+            for name, record in load_records(runs_dir / f"{spec.base}.jsonl").items()
+            if record.complete
+        }
+    pending = [name for name in files if name not in done and (spec.base is None or name in base)]
     if not pending:
         return []
     settings = run_settings(spec, get_settings())
@@ -205,7 +249,7 @@ async def _run_pass(
 
         async def one(name: str) -> FileRecord:
             async with semaphore:
-                record = await scan_file(spec, dataset, name, router, analyzers)
+                record = await scan_file(spec, dataset, name, router, analyzers, base.get(name, []))
             async with lock:
                 with path.open("a", encoding="utf-8") as handle:
                     handle.write(record.model_dump_json() + "\n")
@@ -220,12 +264,17 @@ async def scan_file(
     name: str,
     router: Router | None,
     analyzers: list[Analyzer],
+    base: Sequence[Finding] = (),
 ) -> FileRecord:
-    """Scan one dataset file as ``spec`` says; failures are recorded, not raised."""
+    """Scan one dataset file as ``spec`` says; failures are recorded, not raised.
+
+    Args:
+        base: For verify runs, the findings to cross-check.
+    """
     started_at = datetime.now(UTC)
     models = {status.name: status.model for status in router.status()} if router else {}
     try:
-        return await _scan(spec, dataset, name, router, analyzers, started_at, models)
+        return await _scan(spec, dataset, name, router, analyzers, started_at, models, base)
     except Exception as error:  # one broken file must not end the run
         return FileRecord(
             run=spec.name,
@@ -250,6 +299,7 @@ async def _scan(
     analyzers: list[Analyzer],
     started_at: datetime,
     models: dict[str, str],
+    base: Sequence[Finding],
 ) -> FileRecord:
     settings = ScanSettings()
     durations: dict[str, int] = {}
@@ -275,12 +325,16 @@ async def _scan(
 
         chunks = sum(len(file.chunks) for file in scan.files)
         options = ReviewOptions(
-            depth=Depth.STANDARD,
+            # Verify runs check medium findings too, as deep scans do: standard depth
+            # checks only high and critical ones, too few here to judge a verifier by.
+            depth=Depth.DEEP if spec.kind is RunKind.VERIFY else Depth.STANDARD,
             allow_external=True,
             # Review first, style with what is left: one call per chunk means no style.
-            max_review_calls=max(1, chunks if spec.kind is RunKind.MODEL else chunks * 2),
+            max_review_calls=max(1, chunks if spec.review_only else chunks * 2),
         )
         session = ReviewSession(router, options, NullSink())
+        if spec.kind is RunKind.VERIFY:
+            return await _verify(spec, name, session, scan, base, durations, started_at, models)
         static = scan.static
         if spec.kind is RunKind.LLM_ONLY:
             # Secrets stay masked; only the findings and metrics are withheld.
@@ -309,6 +363,38 @@ async def _scan(
             models=models,
             prompt_versions=result.prompt_versions,
         )
+
+
+async def _verify(
+    spec: RunSpec,
+    name: str,
+    session: ReviewSession,
+    scan: ScanResult,
+    base: Sequence[Finding],
+    durations: dict[str, int],
+    started_at: datetime,
+    models: dict[str, str],
+) -> FileRecord:
+    """Cross-check another run's findings; the static scan only rebuilds the masked source."""
+    await session.load_sources(scan.files, scan.static, scan.ingest.root)
+    begun = time.perf_counter()
+    verified = await session.verify(base)
+    durations["verify"] = _elapsed_ms(begun)
+    result = session.result(verified, None)
+    stats = asdict(result.stats)
+    return FileRecord(
+        run=spec.name,
+        file=name,
+        started_at=started_at,
+        # A finding no provider could cross-check is retried on resume.
+        complete=stats["not_verified"] == 0,
+        variants={spec.variants[0]: verified},
+        calls=result.calls,
+        stats=stats,
+        durations_ms=durations,
+        models=models,
+        prompt_versions=result.prompt_versions,
+    )
 
 
 def _elapsed_ms(started: float) -> int:
