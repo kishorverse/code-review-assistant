@@ -191,7 +191,7 @@ Conventions are in [coding rules](docs/coding-rules.md) and [tech stack](docs/te
   · [Model selection](docs/model_selection.md)
 - [Web API](docs/api.md) · [Web UI](docs/ui.md)
 - [Evaluation](docs/evaluation.md) · [Evaluation data](eval/README.md)
-- [Licenses](docs/licenses.md)
+- [Licenses](docs/licenses.md) · [Requirements coverage](docs/requirements.md): each item of the brief, and where it is met
 
 ## License
 
