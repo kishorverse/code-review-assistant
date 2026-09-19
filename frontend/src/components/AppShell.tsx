@@ -333,8 +333,8 @@ export function PageHeader({
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_120%_at_0%_0%,color-mix(in_srgb,var(--color-accent)_7%,transparent),transparent_70%)]"
       />
       <div className="bg-grid pointer-events-none absolute inset-0 opacity-60" aria-hidden />
-      <div className="relative mx-auto flex max-w-[1600px] flex-wrap items-end gap-x-6 gap-y-4 px-6 pt-6 pb-5 lg:px-8">
-        <div className="rise min-w-0 flex-1 space-y-2">
+      <div className="relative mx-auto flex max-w-[1600px] flex-wrap items-end gap-x-6 gap-y-3 px-6 pt-5 pb-4 lg:px-8">
+        <div className="rise min-w-[min(100%,18rem)] flex-1 space-y-2">
           {crumbs && crumbs.length > 0 && (
             <nav
               aria-label="Breadcrumb"
@@ -359,7 +359,7 @@ export function PageHeader({
             </nav>
           )}
           <div className="flex min-w-0 flex-wrap items-center gap-3">
-            <h1 className="truncate text-[24px] leading-tight font-semibold tracking-[-0.02em]">
+            <h1 className="truncate text-[22px] leading-tight font-semibold tracking-[-0.02em]">
               {title}
             </h1>
             {badge}

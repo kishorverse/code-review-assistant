@@ -1,11 +1,18 @@
-import { Check, RotateCcw, X } from 'lucide-react'
+import { Check, Lightbulb, RotateCcw, ShieldCheck, Sparkles, Wrench, X } from 'lucide-react'
 import type { ReactNode } from 'react'
 
-import { SeverityChip } from '@/components/SeverityChip'
 import { Button } from '@/components/ui/button'
 import type { Decision, Finding } from '@/lib/api'
-import { STATUS_LABEL, isModel } from '@/lib/severity'
+import { SEVERITY_DOT, SEVERITY_LABEL, STATUS_LABEL, hasModelSource, isModel } from '@/lib/severity'
 import { dedent } from '@/lib/text'
+
+const SEVERITY_TEXT: Record<Finding['severity'], string> = {
+  critical: 'text-critical',
+  high: 'text-high',
+  medium: 'text-medium',
+  low: 'text-low',
+  info: 'text-info',
+}
 
 const STATUS_TONE: Record<string, string> = {
   accepted: 'text-success border-success/30 bg-success/8',
@@ -30,17 +37,21 @@ export function FindingCard({
   onDecide: (status: Decision) => void
 }) {
   const muted = finding.status === 'dismissed_by_ai' || finding.status === 'rejected'
+  const fileName = finding.file_path.slice(finding.file_path.lastIndexOf('/') + 1)
+  const fromModel = hasModelSource(finding)
+  const fromTool = finding.sources.some((source) => !isModel(source))
+
   return (
     <article
       id={`finding-${finding.id}`}
       aria-current={selected}
-      className={`border-line relative border-b transition-colors duration-300 ${
-        selected ? 'bg-accent-soft/50' : 'hover:bg-subtle/70'
+      className={`border-line/70 relative border-b transition-colors duration-300 ${
+        selected ? 'bg-accent-soft/40' : 'hover:bg-subtle/70'
       }`}
     >
       <span
         aria-hidden
-        className={`absolute inset-y-0 left-0 w-[3px] origin-top bg-[linear-gradient(180deg,var(--color-accent),var(--color-accent-2))] transition-transform duration-500 ease-out-expo ${
+        className={`ease-out-expo absolute inset-y-0 left-0 w-[3px] origin-top bg-[linear-gradient(180deg,var(--color-accent),var(--color-accent-2))] transition-transform duration-500 ${
           selected ? 'scale-y-100' : 'scale-y-0'
         }`}
       />
@@ -48,27 +59,52 @@ export function FindingCard({
         type="button"
         onClick={onSelect}
         aria-expanded={selected}
-        className={`w-full cursor-pointer px-4 py-3 text-left ${muted ? 'opacity-60' : ''}`}
+        className={`flex w-full cursor-pointer gap-3 px-4 py-3.5 text-left ${muted ? 'opacity-55' : ''}`}
       >
-        <span className="flex items-start gap-2">
-          <SeverityChip severity={finding.severity} />
-          <span className="min-w-0 flex-1 pt-px text-[13px] leading-snug font-medium">
+        <span
+          aria-hidden
+          className={`mt-[7px] size-2 shrink-0 rounded-full ${SEVERITY_DOT[finding.severity]}`}
+        />
+        <span className="min-w-0 flex-1">
+          <span
+            className={`block text-[13px] leading-snug ${selected ? 'font-semibold' : 'font-medium'} ${
+              selected ? '' : 'line-clamp-2'
+            }`}
+          >
             {finding.title}
           </span>
-        </span>
-        <span className="text-faint mt-1.5 flex items-center gap-2 text-[11.5px]">
-          <span className="mono min-w-0 truncate">
-            {finding.file_path}:{finding.start_line}
-          </span>
-          <span aria-hidden>·</span>
-          <span className="shrink-0">{finding.category}</span>
-          {finding.status !== 'open' && (
-            <span
-              className={`ml-auto shrink-0 rounded-[4px] border px-1.5 text-[11px] leading-[18px] font-medium ${STATUS_TONE[finding.status] ?? ''}`}
-            >
-              {STATUS_LABEL[finding.status]}
+          <span className="text-faint mt-1 flex items-center gap-1.5 text-[11.5px]">
+            <span className={`shrink-0 font-medium ${SEVERITY_TEXT[finding.severity]}`}>
+              {SEVERITY_LABEL[finding.severity]}
             </span>
-          )}
+            <span aria-hidden>·</span>
+            <span className="mono min-w-0 truncate" title={finding.file_path}>
+              {fileName}:{finding.start_line}
+            </span>
+            <span aria-hidden>·</span>
+            <span className="shrink-0 capitalize">{finding.category}</span>
+            <span className="ml-auto flex shrink-0 items-center gap-1">
+              {fromTool && (
+                <Wrench aria-label="Found by an analyzer" className="size-3 opacity-70" />
+              )}
+              {fromModel && (
+                <Sparkles aria-label="Found by a model" className="text-accent-text size-3" />
+              )}
+              {finding.verified_by.length > 0 && (
+                <ShieldCheck
+                  aria-label="Verified by a second model"
+                  className="text-success size-3"
+                />
+              )}
+              {finding.status !== 'open' && (
+                <span
+                  className={`ml-0.5 rounded-full border px-1.5 text-[10.5px] leading-[16px] font-medium ${STATUS_TONE[finding.status] ?? ''}`}
+                >
+                  {STATUS_LABEL[finding.status]}
+                </span>
+              )}
+            </span>
+          </span>
         </span>
       </button>
 
@@ -86,7 +122,7 @@ function Details({
 }) {
   const decided = finding.status === 'accepted' || finding.status === 'rejected'
   return (
-    <div className="animate-expand space-y-3 px-4 pb-4 text-[13px] leading-relaxed">
+    <div className="animate-expand space-y-3.5 px-4 pb-5 pl-9 text-[13.5px] leading-relaxed">
       {finding.message.trim() !== finding.title.trim() && (
         <p className="text-text">{finding.message}</p>
       )}
@@ -104,7 +140,7 @@ function Details({
       {finding.suggestion && (
         <div className="border-success/25 bg-success/5 rounded-[10px] border px-3.5 py-2.5">
           <p className="text-success flex items-center gap-1.5 text-[11.5px] font-medium">
-            <Check aria-hidden className="size-3" strokeWidth={2.5} />
+            <Lightbulb aria-hidden className="size-3" />
             Suggested change
           </p>
           <p className="mt-0.5">{finding.suggestion}</p>
@@ -155,10 +191,6 @@ function Details({
             </Button>
           </>
         )}
-        <span className="text-faint ml-auto hidden text-[11.5px] lg:inline">
-          <kbd className="border-line rounded border px-1 text-[10.5px]">j</kbd>{' '}
-          <kbd className="border-line rounded border px-1 text-[10.5px]">k</kbd> to move
-        </span>
       </div>
     </div>
   )

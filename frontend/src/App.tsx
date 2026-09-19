@@ -17,7 +17,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AppShell>
         {/* Keyed by path, so every page enters with the same soft rise. */}
-        <div key={location.pathname} className="page-enter min-h-full">
+        <div key={location.pathname} className="page-enter h-full">
           <Routes location={location}>
             <Route path="/" element={<UploadPage />} />
             <Route path="/scans/:scanId" element={<ScanPage />} />

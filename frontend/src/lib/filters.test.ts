@@ -46,3 +46,11 @@ describe('finding filters', () => {
     expect(ids(applyFilter(ALL, { ...EMPTY_FILTER, source: 'models' }, 0.6))).toEqual(['b', 'e'])
   })
 })
+
+describe('finding search', () => {
+  it('matches the title, message, file and rule, ignoring case', () => {
+    expect(ids(applyFilter(ALL, { ...EMPTY_FILTER, query: 'api.PY' }, 0.6))).toEqual(['b'])
+    expect(ids(applyFilter(ALL, { ...EMPTY_FILTER, query: 'no such text' }, 0.6))).toEqual([])
+    expect(ids(applyFilter(ALL, { ...EMPTY_FILTER, query: '   ' }, 0.6))).toEqual(['a', 'b', 'e'])
+  })
+})

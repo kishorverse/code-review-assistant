@@ -11,6 +11,8 @@ export interface FindingFilter {
   file: string | null
   /** Include findings dismissed by AI review, rejected, or below the confidence threshold. */
   includeHidden: boolean
+  /** Free text matched against the title, message, file, rule and category. */
+  query?: string
 }
 
 export const EMPTY_FILTER: FindingFilter = {
@@ -19,6 +21,25 @@ export const EMPTY_FILTER: FindingFilter = {
   source: 'any',
   file: null,
   includeHidden: false,
+  query: '',
+}
+
+/** How many of the narrowing filters differ from the defaults (the file and search excluded). */
+export function activeFilterCount(filter: FindingFilter): number {
+  return [
+    filter.minSeverity !== 'any',
+    filter.category !== 'any',
+    filter.source !== 'any',
+    filter.includeHidden,
+  ].filter(Boolean).length
+}
+
+function matchesQuery(finding: Finding, query: string): boolean {
+  const needle = query.trim().toLowerCase()
+  if (!needle) return true
+  return [finding.title, finding.message, finding.file_path, finding.rule_id, finding.category]
+    .filter(Boolean)
+    .some((text) => (text as string).toLowerCase().includes(needle))
 }
 
 const HIDDEN_STATUSES = ['dismissed_by_ai', 'rejected']
@@ -46,6 +67,7 @@ export function applyFilter(
     if (filter.file && finding.file_path !== filter.file) return false
     if (filter.source === 'tools' && isAiOnly(finding)) return false
     if (filter.source === 'models' && !hasModelSource(finding)) return false
+    if (filter.query && !matchesQuery(finding, filter.query)) return false
     return true
   })
 }

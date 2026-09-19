@@ -76,8 +76,10 @@ export function ScanPage() {
   const failed = status === 'failed'
   const error = info?.error ?? store.message
 
+  const done = status === 'done' && scan.data !== undefined
+
   return (
-    <>
+    <div>
       <PageHeader
         crumbs={[{ label: 'Reviews', to: '/' }, { label: info?.source ?? 'Scan' }]}
         title={info?.source ?? 'Scan'}
@@ -95,34 +97,38 @@ export function ScanPage() {
           </>
         }
       />
-      <div className="mx-auto max-w-[1600px] px-6 py-6 lg:px-8">
-        {status === 'done' && scan.data ? (
+      {done && scan.data ? (
+        <div className="px-4 pt-4 pb-4 lg:px-6">
           <ResultsView scanId={scanId} detail={scan.data} />
-        ) : failed ? (
-          <div className="rise panel border-critical/30 flex items-start gap-3.5 px-5 py-4.5">
-            <span className="bg-critical/10 text-critical grid size-8 shrink-0 place-items-center rounded-full">
-              <CircleAlert aria-hidden className="size-4" />
-            </span>
-            <div>
-              <p className="text-[13.5px] font-medium">The scan failed</p>
-              <p className="text-muted mt-0.5 text-[13px]">
-                {error ?? 'Something went wrong. Please try again.'}
-              </p>
+        </div>
+      ) : (
+        <div className="mx-auto max-w-[1600px] px-6 py-6 lg:px-8">
+          {failed ? (
+            <div className="rise panel border-critical/30 flex items-start gap-3.5 px-5 py-4.5">
+              <span className="bg-critical/10 text-critical grid size-8 shrink-0 place-items-center rounded-full">
+                <CircleAlert aria-hidden className="size-4" />
+              </span>
+              <div>
+                <p className="text-[13.5px] font-medium">The scan failed</p>
+                <p className="text-muted mt-0.5 text-[13px]">
+                  {error ?? 'Something went wrong. Please try again.'}
+                </p>
+              </div>
             </div>
-          </div>
-        ) : (
-          <ScanProgress
-            stage={store.stage}
-            finishedStages={store.finishedStages}
-            tools={store.tools}
-            calls={store.calls}
-            plan={store.plan}
-            findings={liveFindings}
-            activity={store.activity}
-          />
-        )}
-      </div>
-    </>
+          ) : (
+            <ScanProgress
+              stage={store.stage}
+              finishedStages={store.finishedStages}
+              tools={store.tools}
+              calls={store.calls}
+              plan={store.plan}
+              findings={liveFindings}
+              activity={store.activity}
+            />
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 

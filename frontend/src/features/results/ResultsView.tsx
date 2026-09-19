@@ -1,37 +1,25 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ScanSearch, SearchX } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { toast } from 'sonner'
+import { useQuery } from '@tanstack/react-query'
+import { Code2, Cpu, FileText, Maximize2, Minimize2 } from 'lucide-react'
+import { Tabs } from 'radix-ui'
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 
-import { CodeViewer } from '@/features/results/CodeViewer'
-import { FileList } from '@/features/results/FileList'
-import { FindingCard } from '@/features/results/FindingCard'
-import { FindingFilters } from '@/features/results/FindingFilters'
-import { FindingsOverview } from '@/features/results/FindingsOverview'
-import { ProvenanceTable } from '@/features/results/ProvenanceTable'
-import { ScoreCard } from '@/features/results/ScoreCard'
-import { SummaryCard } from '@/features/results/SummaryCard'
-import {
-  decideFinding,
-  getFile,
-  getFiles,
-  listFindings,
-  type Decision,
-  type Finding,
-  type ScanDetail,
-} from '@/lib/api'
+import { ModelsTab } from '@/features/results/ModelsTab'
+import { ResultsOverview } from '@/features/results/ResultsOverview'
+import { ReviewWorkspace } from '@/features/results/ReviewWorkspace'
+import { SummaryTab } from '@/features/results/SummaryTab'
+import { getFiles, listFindings, type ScanDetail } from '@/lib/api'
 import { EMPTY_FILTER, applyFilter, isReported } from '@/lib/filters'
-import { revealWithin } from '@/lib/scroll'
 import { compareFindings } from '@/lib/severity'
 import { stagger } from '@/lib/utils'
 
 const MIN_CONFIDENCE = 0.6
 
-/** The results workspace: an overview, then files, code with marks, and the findings. */
+type Tab = 'review' | 'summary' | 'models'
+
+/** The results: the review at a glance, then the code review, the summary, or the models. */
 export function ResultsView({ scanId, detail }: { scanId: string; detail: ScanDetail }) {
-  const queryClient = useQueryClient()
+  const [tab, setTab] = useState<Tab>('review')
   const [filter, setFilter] = useState(EMPTY_FILTER)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const findings = useQuery({
     queryKey: ['findings', scanId],
@@ -45,198 +33,160 @@ export function ResultsView({ scanId, detail }: { scanId: string; detail: ScanDe
     [all],
   )
   const visible = useMemo(() => applyFilter(all, filter, MIN_CONFIDENCE), [all, filter])
-  const hiddenCount = all.length - reported.length
-  const selected = visible.find((finding) => finding.id === selectedId) ?? visible[0] ?? null
-  const filePath = selected?.file_path ?? filter.file ?? files.data?.files[0]?.path ?? null
-  const fileEntry = files.data?.files.find((entry) => entry.path === filePath)
 
-  const file = useQuery({
-    queryKey: ['file', scanId, filePath],
-    queryFn: () => getFile(scanId, filePath as string),
-    enabled: filePath !== null,
-  })
-
-  const decide = useMutation({
-    mutationFn: ({ finding, status }: { finding: Finding; status: Decision }) =>
-      decideFinding(scanId, finding.id, status),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['findings', scanId] })
-      void queryClient.invalidateQueries({ queryKey: ['scan', scanId] })
-      void queryClient.invalidateQueries({ queryKey: ['files', scanId] })
-    },
-    onError: () => toast.error('That decision could not be saved.'),
-  })
-
-  useKeyboardNavigation(visible, selected, setSelectedId)
-
-  // Keep the selected finding in sight, whether it was picked by a gutter mark or a key.
-  const findingsPane = useRef<HTMLDivElement>(null)
-  const selectedCardId = selected?.id
-  useEffect(() => {
-    const card = selectedCardId && document.getElementById(`finding-${selectedCardId}`)
-    if (card && findingsPane.current) revealWithin(findingsPane.current, card, 'nearest')
-  }, [selectedCardId])
+  const sentinel = useRef<HTMLDivElement>(null)
+  const [focused, toggleFocus] = useEditorFocus(sentinel)
 
   return (
-    <div className="space-y-5">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[300px_300px_minmax(0,1fr)]">
-        {detail.score && <ScoreCard score={detail.score} />}
-        <FindingsOverview reported={reported} summary={detail.summary} />
-        <div className="md:col-span-2 xl:col-span-1">
-          {detail.ai_summary ? (
-            <SummaryCard summary={detail.ai_summary} />
-          ) : (
-            <section className="rise panel flex h-full flex-col px-5 py-4.5" style={stagger(2)}>
-              <h2 className="eyebrow">Summary</h2>
-              <div className="flex flex-1 flex-col items-center justify-center gap-3 py-6 text-center">
-                <span className="border-line bg-subtle text-faint grid size-10 place-items-center rounded-xl border">
-                  <ScanSearch aria-hidden className="size-4.5" />
-                </span>
-                <p className="text-muted max-w-xs text-[13px] leading-relaxed">
-                  No model summary for this review: it ran the static analyzers only.
-                </p>
-              </div>
-            </section>
-          )}
-        </div>
-      </div>
+    <div className="flex flex-col gap-3">
+      <ResultsOverview
+        detail={detail}
+        reported={reported}
+        onOpenSummary={() => setTab('summary')}
+      />
 
-      <section
-        className="rise panel shadow-lift overflow-hidden"
-        style={stagger(3)}
-        aria-label="Review workspace"
-      >
-        <div className="border-line bg-surface/80 border-b px-3 py-2.5 backdrop-blur">
-          <FindingFilters filter={filter} onChange={setFilter} hiddenCount={hiddenCount} />
-        </div>
-
-        <div className="divide-line grid divide-y lg:h-[calc(100svh-8rem)] lg:min-h-[560px] lg:grid-cols-[232px_minmax(0,1fr)_380px] lg:grid-rows-[minmax(0,1fr)] lg:divide-x lg:divide-y-0 2xl:grid-cols-[260px_minmax(0,1fr)_440px]">
-          <div className="bg-subtle/40 flex max-h-72 min-h-0 flex-col lg:max-h-none">
-            <FileList
-              files={files.data?.files ?? []}
-              skipped={files.data?.skipped ?? []}
-              selected={filePath}
-              onSelect={(path) => setFilter({ ...filter, file: path })}
-            />
-          </div>
-
-          <section
-            className="flex max-h-[70svh] min-h-64 min-w-0 flex-col lg:max-h-none"
-            aria-label="Code"
+      <Tabs.Root value={tab} onValueChange={(value) => setTab(value as Tab)}>
+        {/* Marks where the tab bar sits in the page, before it sticks. */}
+        <div ref={sentinel} aria-hidden />
+        <div
+          className="rise bg-canvas/90 border-line sticky top-0 z-20 -mx-4 mb-3 flex items-end gap-2 border-b px-4 backdrop-blur-md lg:-mx-6 lg:px-6"
+          style={stagger(1)}
+        >
+          <Tabs.List aria-label="Results" className="flex min-w-0 flex-1 items-end gap-1">
+            <TabTrigger value="review" icon={Code2} count={reported.length}>
+              Review
+            </TabTrigger>
+            <TabTrigger value="summary" icon={FileText}>
+              Summary
+            </TabTrigger>
+            <TabTrigger value="models" icon={Cpu} count={detail.calls.length}>
+              Models
+            </TabTrigger>
+          </Tabs.List>
+          <button
+            type="button"
+            onClick={toggleFocus}
+            title={focused ? 'Show the overview (f)' : 'Give the review the whole screen (f)'}
+            className="text-muted hover:text-text hover:bg-hover rounded-control mb-1.5 hidden h-8 shrink-0 cursor-pointer items-center gap-1.5 px-2.5 text-[12.5px] font-medium transition-colors lg:inline-flex"
           >
-            <header className="border-line flex h-11 shrink-0 items-center gap-3 border-b px-4">
-              <span aria-hidden className="flex gap-1.5">
-                <span className="bg-line-strong size-2.5 rounded-full" />
-                <span className="bg-line-strong size-2.5 rounded-full" />
-                <span className="bg-line-strong size-2.5 rounded-full" />
-              </span>
-              <h2
-                key={filePath}
-                className="fade-in mono min-w-0 truncate text-[12.5px] font-medium"
-              >
-                {filePath ?? 'No file selected'}
-              </h2>
-              {fileEntry && (
-                <span className="text-faint ml-auto shrink-0 text-[11.5px]">
-                  {[
-                    fileEntry.language,
-                    fileEntry.lines !== null ? `${fileEntry.lines} lines` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </span>
-              )}
-            </header>
-            {file.data ? (
-              <CodeViewer
-                key={filePath}
-                content={file.data.content}
-                language={file.data.language}
-                findings={visible.filter((finding) => finding.file_path === filePath)}
-                selectedId={selected?.id ?? null}
-                onSelect={(finding) => setSelectedId(finding.id)}
-              />
+            {focused ? (
+              <Minimize2 aria-hidden className="size-3.5" />
             ) : (
-              <div className="space-y-2 p-4" aria-live="polite">
-                {filePath ? (
-                  <>
-                    <p className="sr-only">Loading…</p>
-                    {[72, 54, 88, 40, 66, 58, 80].map((width, index) => (
-                      <div
-                        key={index}
-                        className="shimmer bg-subtle h-3 rounded"
-                        style={{ width: `${width}%` }}
-                      />
-                    ))}
-                  </>
-                ) : (
-                  <p className="text-muted text-[13px]">Pick a file to read it here.</p>
-                )}
-              </div>
+              <Maximize2 aria-hidden className="size-3.5" />
             )}
-          </section>
-
-          <section className="flex min-h-0 min-w-0 flex-col" aria-label="Findings">
-            <header className="border-line flex h-11 shrink-0 items-center gap-2 border-b px-4">
-              <h2 className="text-[12.5px] font-semibold">Findings</h2>
-              <span className="bg-subtle text-muted rounded-full px-1.5 text-[11px] font-medium tabular-nums">
-                {visible.length}
-              </span>
-            </header>
-            <div
-              ref={findingsPane}
-              className="min-h-0 flex-1 overflow-y-auto motion-safe:scroll-smooth"
-            >
-              {visible.map((finding) => (
-                <FindingCard
-                  key={finding.id}
-                  finding={finding}
-                  selected={selected?.id === finding.id}
-                  onSelect={() => setSelectedId(finding.id)}
-                  onDecide={(status) => decide.mutate({ finding, status })}
-                />
-              ))}
-              {visible.length === 0 && findings.isSuccess && (
-                <div className="fade-in px-6 py-16 text-center">
-                  <span className="border-line bg-subtle mx-auto grid size-10 place-items-center rounded-xl border">
-                    <SearchX aria-hidden className="text-faint size-4.5" />
-                  </span>
-                  <p className="text-muted mt-3 text-[13px]">
-                    {all.length === 0
-                      ? 'No findings. The code looks clean.'
-                      : 'Nothing matches these filters.'}
-                  </p>
-                </div>
-              )}
-            </div>
-          </section>
+            {focused ? 'Show overview' : 'Expand editor'}
+            <kbd className="border-line bg-surface text-faint ml-0.5 rounded border px-1 font-sans text-[10px] leading-[14px]">
+              f
+            </kbd>
+          </button>
         </div>
-      </section>
 
-      <ProvenanceTable calls={detail.calls} />
+        {/* The review takes a full screen below the tab bar; scroll down and it fills the window. */}
+        <Tabs.Content
+          value="review"
+          className="tab-panel flex flex-col lg:h-[calc(100dvh-70px)] lg:min-h-[520px]"
+        >
+          <ReviewWorkspace
+            scanId={scanId}
+            files={files.data}
+            visible={visible}
+            total={all.length}
+            hiddenCount={all.length - reported.length}
+            loaded={findings.isSuccess}
+            filter={filter}
+            onFilter={setFilter}
+          />
+        </Tabs.Content>
+        <Tabs.Content value="summary" className="tab-panel">
+          <SummaryTab detail={detail} reported={reported} />
+        </Tabs.Content>
+        <Tabs.Content value="models" className="tab-panel">
+          <ModelsTab calls={detail.calls} />
+        </Tabs.Content>
+      </Tabs.Root>
     </div>
   )
 }
 
-/** j and k move between findings, as in a pager. */
-function useKeyboardNavigation(
-  visible: Finding[],
-  selected: Finding | null,
-  select: (id: string) => void,
-): void {
+/**
+ * Whether the page is scrolled so the tab bar sits at the top and the review fills the window,
+ * and a toggle between that and the overview. `f` does the same from the keyboard.
+ */
+function useEditorFocus(sentinel: RefObject<HTMLDivElement | null>): [boolean, () => void] {
+  const [focused, setFocused] = useState(false)
+
+  useEffect(() => {
+    const found = locate(sentinel.current)
+    if (!found) return
+    const onScroll = () => {
+      const current = locate(sentinel.current)
+      if (current) setFocused(current.main.scrollTop >= current.offset - 4)
+    }
+    found.main.addEventListener('scroll', onScroll, { passive: true })
+    return () => found.main.removeEventListener('scroll', onScroll)
+  }, [sentinel])
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'f' || event.metaKey || event.ctrlKey || event.altKey) return
       if (event.target instanceof HTMLElement && event.target.closest('input, select, textarea')) {
         return
       }
-      if (event.metaKey || event.ctrlKey || event.altKey) return
-      if (event.key !== 'j' && event.key !== 'k') return
-      const index = visible.findIndex((finding) => finding.id === selected?.id)
-      const next = event.key === 'j' ? index + 1 : index - 1
-      const finding = visible[Math.max(0, Math.min(visible.length - 1, next))]
-      if (finding) select(finding.id)
+      toggleFocus(sentinel.current)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [visible, selected, select])
+  }, [sentinel])
+
+  return [focused, () => toggleFocus(sentinel.current)]
+}
+
+/** The scrolling page and how far down it the tab bar sits before it sticks. */
+function locate(marker: HTMLElement | null): { main: HTMLElement; offset: number } | null {
+  const main = marker?.closest('main')
+  if (!marker || !main) return null
+  const offset =
+    marker.getBoundingClientRect().top - main.getBoundingClientRect().top + main.scrollTop
+  return { main, offset }
+}
+
+function toggleFocus(marker: HTMLElement | null): void {
+  const found = locate(marker)
+  if (!found) return
+  const atReview = found.main.scrollTop >= found.offset - 4
+  found.main.scrollTo({ top: atReview ? 0 : found.offset, behavior: 'smooth' })
+}
+
+function TabTrigger({
+  value,
+  icon: Icon,
+  count,
+  children,
+}: {
+  value: Tab
+  icon: typeof Code2
+  count?: number
+  children: ReactNode
+}) {
+  return (
+    <Tabs.Trigger
+      value={value}
+      className="group text-muted hover:text-text data-[state=active]:text-text focus-visible:bg-hover relative -mb-px flex h-10 cursor-pointer items-center gap-2 px-3 text-[13px] font-medium transition-colors outline-none focus-visible:rounded-t-md"
+    >
+      <Icon
+        aria-hidden
+        className="group-data-[state=active]:text-accent-text size-3.5 transition-colors"
+      />
+      {children}
+      {count !== undefined && (
+        <span className="bg-subtle group-data-[state=active]:bg-accent-soft group-data-[state=active]:text-accent-text rounded-full px-1.5 text-[11px] tabular-nums transition-colors">
+          {count}
+        </span>
+      )}
+      <span
+        aria-hidden
+        className="ease-out-expo absolute inset-x-2 bottom-0 h-[2px] origin-center scale-x-0 rounded-full bg-[linear-gradient(90deg,var(--color-accent),var(--color-accent-2))] transition-transform duration-300 group-data-[state=active]:scale-x-100"
+      />
+    </Tabs.Trigger>
+  )
 }

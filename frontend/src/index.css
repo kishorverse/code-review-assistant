@@ -441,3 +441,11 @@
     transform: none;
   }
 }
+
+/* A results tab fades up as it opens. */
+@utility tab-panel {
+  outline: none;
+  &[data-state='active'] {
+    animation: page-enter 360ms var(--ease-out-expo) both;
+  }
+}
