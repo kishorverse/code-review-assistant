@@ -1,12 +1,12 @@
 # Margin — AI Code Review Assistant
 
-> Static analyzers find it. Models check it. You decide what changes.
+> Static analyzers find what a rule can express. Models find what it can't. You decide what changes.
 
 Margin reviews a source file or a whole project by combining **static analysis** with **review by
-hosted LLMs**. Analyzers find the issues a rule can express; models judge those findings and add the
-ones no rule can, such as a discount applied twice or a cache that evicts its newest entry. Every AI
-claim cites real lines and quotes real code, says which model made it and which confirmed it, and you
-accept or reject it.
+large language models**, hosted or run entirely on your own machine. Analyzers catch the issues a
+rule can express; models judge those findings and add the ones no rule can, such as a discount
+applied twice or a cache that evicts its newest entry. Every AI claim cites real lines and quotes
+real code, names which model made it and which model confirmed it, and you accept or reject each one.
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kishorverse/code-review-assistant/blob/main/notebooks/margin_demo.ipynb)
 
@@ -25,7 +25,8 @@ accept or reject it.
   local model, stays under each one's limits, and falls back when a quota runs out or a provider is
   down.
 - **Three ways to use it.** A web UI with live progress, a CLI, and a GitHub Action that publishes SARIF
-  to code scanning. Reports in HTML, JSON and SARIF 2.1.0, with a quality score and its formula.
+  to code scanning — every path produces the same report, in HTML, JSON or SARIF 2.1.0, with a quality
+  score and its formula.
 - **Private by default.** Code goes to hosted models only with explicit consent, detected secrets are
   masked first, nothing uploaded is ever executed, and uploads are deleted after 24 hours.
 
