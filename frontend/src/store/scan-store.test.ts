@@ -35,6 +35,12 @@ describe('scan store', () => {
     expect(state.tools).toHaveLength(1)
     expect(state.tools[0]?.finding_count).toBe(3)
     expect(state.plan).toEqual({ review: 4, style: 2, skipped: 1 })
+    expect(state.activity.map((line) => `${line.source}: ${line.text}`)).toEqual([
+      'scan: Unpacking',
+      'scan: Running analyzers',
+      'ruff: 3 findings in 120 ms',
+      'plan: 4 chunks for review, 2 for style, 1 skipped',
+    ])
   })
 
   it('replaces a finding when a later event carries the same id', () => {

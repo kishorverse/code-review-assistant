@@ -146,7 +146,8 @@ describe('scan page', () => {
       message: null,
     })
     source?.emit({ kind: 'finding', finding })
-    expect(await screen.findByText('bandit')).toBeInTheDocument()
+    // The analyzer shows in its table and in the activity log.
+    expect(await screen.findAllByText('bandit')).not.toHaveLength(0)
     expect(screen.getByText('SQL built with string concatenation')).toBeInTheDocument()
 
     status = 'done'

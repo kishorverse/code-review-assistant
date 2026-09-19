@@ -9,6 +9,14 @@
       content="Margin: AI code review that combines static analysis with LLM review."
     />
     <title>Margin · AI code review</title>
+    <script>
+      // Apply the saved or system theme before the first paint, so the page never flashes.
+      try {
+        const saved = localStorage.getItem('margin-theme')
+        const dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches
+        document.documentElement.classList.toggle('dark', dark)
+      } catch {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
