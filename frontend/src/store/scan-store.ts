@@ -5,6 +5,7 @@
  */
 import { create } from 'zustand'
 
+import { describeEvent, type ActivityLine } from '@/lib/activity'
 import type { CallRecord, Finding, ScanStatus } from '@/lib/api'
 import type { ScanEvent, ScanStage, ToolEvent } from '@/lib/events'
 
@@ -24,6 +25,7 @@ interface ScanState {
   calls: CallRecord[]
   plan: ReviewPlan | null
   findings: Record<string, Finding>
+  activity: ActivityLine[]
   start: (scanId: string) => void
   apply: (event: ScanEvent) => void
 }
@@ -37,7 +39,10 @@ const EMPTY = {
   calls: [] as CallRecord[],
   plan: null,
   findings: {} as Record<string, Finding>,
+  activity: [] as ActivityLine[],
 }
+
+const ACTIVITY_LIMIT = 300
 
 export const useScanStore = create<ScanState>((set) => ({
   scanId: null,
@@ -48,31 +53,37 @@ export const useScanStore = create<ScanState>((set) => ({
 
   apply: (event) =>
     set((state) => {
-      switch (event.kind) {
-        case 'status':
-          return { status: event.status, message: event.message }
-        case 'stage':
-          return {
-            stage: event.stage,
-            finishedStages: state.stage ? [...state.finishedStages, state.stage] : [],
-          }
-        case 'tool':
-          return { tools: upsertTool(state.tools, event) }
-        case 'review_plan':
-          return {
-            plan: {
-              review: event.review_chunks,
-              style: event.style_chunks,
-              skipped: event.skipped_chunks,
-            },
-          }
-        case 'llm_call':
-          return { calls: [...state.calls, event.call] }
-        case 'finding':
-          return { findings: { ...state.findings, [event.finding.id]: event.finding } }
-      }
+      const line = describeEvent(event, Date.now())
+      const activity = line ? [...state.activity, line].slice(-ACTIVITY_LIMIT) : state.activity
+      return { ...reduce(state, event), activity }
     }),
 }))
+
+function reduce(state: ScanState, event: ScanEvent): Partial<ScanState> {
+  switch (event.kind) {
+    case 'status':
+      return { status: event.status, message: event.message }
+    case 'stage':
+      return {
+        stage: event.stage,
+        finishedStages: state.stage ? [...state.finishedStages, state.stage] : [],
+      }
+    case 'tool':
+      return { tools: upsertTool(state.tools, event) }
+    case 'review_plan':
+      return {
+        plan: {
+          review: event.review_chunks,
+          style: event.style_chunks,
+          skipped: event.skipped_chunks,
+        },
+      }
+    case 'llm_call':
+      return { calls: [...state.calls, event.call] }
+    case 'finding':
+      return { findings: { ...state.findings, [event.finding.id]: event.finding } }
+  }
+}
 
 function upsertTool(tools: ToolEvent[], event: ToolEvent): ToolEvent[] {
   const index = tools.findIndex((tool) => tool.tool === event.tool)
