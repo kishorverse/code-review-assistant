@@ -1,6 +1,8 @@
 """Command line for the evaluation: ``uv run python -m evaluation --help``."""
 
 import asyncio
+import json
+from dataclasses import asdict
 from typing import Annotated
 
 import typer
@@ -10,7 +12,7 @@ from rich.table import Table
 from app.log import configure_logging
 from app.review.merge import is_reported
 from app.review.planner import DEFAULT_MIN_CONFIDENCE
-from evaluation import agreement, latency, report, routing_sim
+from evaluation import agreement, latency, report, robustness, routing_sim
 from evaluation.dataset import REPO_ROOT, load_dataset
 from evaluation.runner import (
     RUNS_DIR,
@@ -131,7 +133,7 @@ def docs_command() -> None:
     """Write the current tables into docs/evaluation.md, between its TABLE markers."""
     dataset = load_dataset()
     named = report.tables(dataset, report.evaluate(dataset), report.common_model_results(dataset))
-    for name in ("routing", "latency"):
+    for name in ("routing", "latency", "robustness"):
         path = report.RESULTS_DIR / f"{name}.md"
         if path.exists():
             named[name] = path.read_text(encoding="utf-8")
@@ -167,6 +169,33 @@ def latency_command(
     path.write_text(table, encoding="utf-8", newline="\n")
     console.print(table)
     console.print(f"-> {path}")
+
+
+@app.command(name="robustness")
+def robustness_command(
+    repository: Annotated[
+        list[str] | None,
+        typer.Option("--repository", help="Only these repositories, by owner/repo."),
+    ] = None,
+) -> None:
+    """Scan third-party repositories at pinned commits: what survives real code."""
+    configure_logging("ERROR", "console")
+    chosen = [
+        entry for entry in robustness.REPOSITORIES if repository is None or entry.name in repository
+    ]
+    if not chosen:
+        known = ", ".join(entry.name for entry in robustness.REPOSITORIES)
+        raise typer.BadParameter(f"no such repository. Known: {known}")
+    scans = asyncio.run(robustness.benchmark(chosen))
+    table = robustness.to_markdown(scans)
+    (report.RESULTS_DIR / "robustness.md").write_text(table, encoding="utf-8", newline="\n")
+    (report.RESULTS_DIR / "robustness.json").write_text(
+        json.dumps([asdict(item) for item in scans], indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    console.print(table)
+    console.print(f"-> {report.RESULTS_DIR}")
 
 
 @app.command(name="sample")

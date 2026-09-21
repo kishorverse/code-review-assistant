@@ -56,6 +56,32 @@ async def test_allowlist_comments_inside_the_upload_cannot_hide_secrets(
     assert "AWS Access Key" in by_rule(result.findings)
 
 
+async def test_a_secret_in_a_test_file_is_reported_a_step_lower(
+    make_target: TargetFactory,
+) -> None:
+    """Test fixtures are full of credentials written to be fake.
+
+    They stay in the report, because a real secret does get committed in a test;
+    they just stop outranking the ones in production code.
+    """
+    target = make_target(
+        {
+            "app/settings.py": f'AWS_KEY = "{AWS_ACCESS_KEY}"\n',
+            "tests/fixtures/creds.py": f'AWS_KEY = "{AWS_ACCESS_KEY}"\n',
+        }
+    )
+
+    result = await DetectSecretsAnalyzer().analyze(target)
+
+    severities = {finding.file_path: finding.severity for finding in result.findings}
+    assert severities == {
+        "app/settings.py": Severity.HIGH,
+        "tests/fixtures/creds.py": Severity.MEDIUM,
+    }
+    lowered = next(f for f in result.findings if f.file_path.startswith("tests/"))
+    assert "looks like test code" in lowered.message
+
+
 def test_parse_scores_heuristic_detectors_lower_and_rejects_bad_reports(tmp_path: Path) -> None:
     root = tmp_path.resolve()
     report = {

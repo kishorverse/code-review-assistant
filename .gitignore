@@ -30,8 +30,9 @@ storage/
 *.sqlite3
 *.db
 
-# Evaluation raw outputs
+# Evaluation raw outputs and third-party checkouts
 eval/results/raw/
+eval/datasets/external/
 
 # Editors and OS
 .vscode/

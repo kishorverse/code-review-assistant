@@ -12,7 +12,13 @@ from pathlib import Path
 
 from app.errors import AnalyzerError
 from app.findings import REDACTED_EVIDENCE, Category, Finding, Severity
-from app.static.base import AnalysisTarget, AnalyzerResult, relative_to_root, run_tool
+from app.static.base import (
+    AnalysisTarget,
+    AnalyzerResult,
+    is_test_path,
+    relative_to_root,
+    run_tool,
+)
 from app.static.process import python_tool
 
 NAME = "detect-secrets"
@@ -25,6 +31,16 @@ ALLOWLIST_FILTER = "detect_secrets.filters.allowlist.is_line_allowlisted"
 # Keyword and entropy detectors also match non-secrets such as test fixtures.
 _HEURISTIC_TYPES = frozenset(
     {"Secret Keyword", "Base64 High Entropy String", "Hex High Entropy String"}
+)
+
+# Test files are full of credentials written to be fake, and detect-secrets cannot
+# tell them from live ones: on express and got, 78 of 81 high-severity secret
+# findings were in tests (evaluation section 6). They are still reported, one step
+# down, so a real secret committed in a test is not hidden.
+_TEST_NOTE = (
+    " This file looks like test code, so the value may be a fixture rather than a "
+    "live credential; it is reported a step below the severity a secret in "
+    "production code would get."
 )
 
 
@@ -71,6 +87,7 @@ def parse_output(stdout: str, root: Path) -> tuple[list[Finding], frozenset[str]
         path = relative_to_root(reported_path, root)
         if path is None:
             continue
+        in_tests = is_test_path(path)
         for secret in secrets:
             hashes.add(secret["hashed_secret"])
             kind = secret["type"]
@@ -80,11 +97,12 @@ def parse_output(stdout: str, root: Path) -> tuple[list[Finding], frozenset[str]
                     start_line=secret["line_number"],
                     end_line=secret["line_number"],
                     category=Category.SECURITY,
-                    severity=Severity.HIGH,
+                    severity=Severity.MEDIUM if in_tests else Severity.HIGH,
                     title=f"Possible hardcoded secret ({kind})"[:80],
                     message=(
                         f"A value that looks like a {kind.lower()} is committed to the code. "
                         "Move it to configuration or a secrets manager, and rotate it if real."
+                        + (_TEST_NOTE if in_tests else "")
                     ),
                     evidence=REDACTED_EVIDENCE,
                     rule_id=kind,

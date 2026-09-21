@@ -8,12 +8,14 @@ eval/
   datasets/seeded/
     src/          32 Python modules written for this evaluation
     labels.json   the 55 issues injected into them
+  datasets/external/   third-party checkouts, fetched on demand and not committed
   results/
     runs/         every finding and model call, one JSON line per file and run
     scores.json   metrics per configuration
     tables.md     every table; docs/evaluation.md embeds them
     routing.md    router simulation
     latency.md    end-to-end timings
+    robustness.md, robustness.json  third-party repositories at pinned commits
     human_ratings.md  rating summary, once ratings are in
   human_eval/
     rating_sheet.csv   blind sample of AI suggestions to rate
@@ -40,6 +42,18 @@ were kept on purpose, because they are the kind the controls exist to measure.
 The files are excluded from this repository's own linting and secret scanning (see
 `.pre-commit-config.yaml`): the bugs and the fake signing key are the point.
 
+## Third-party repositories
+
+`uv run python -m evaluation robustness` fetches six widely used, permissively licensed repositories —
+one per supported language — at pinned commits and scans each one statically, exactly as
+`margin scan <directory>` does. It measures what the seeded dataset cannot: whether real sizes,
+languages, generated files and test fixtures break the pipeline, and how much a first scan of a mature
+project reports. The checkouts land in `datasets/external/` and are not committed; the pinned commits
+and the results (`results/robustness.md`, `results/robustness.json`) are.
+
+These repositories are unlabelled, so the benchmark reports volume and survival, not precision or
+recall. The findings are in [docs/evaluation.md](../docs/evaluation.md) §6.
+
 ## Reproducing
 
 From `backend/`, with keys in `backend/.env` for the model runs:
@@ -64,6 +78,7 @@ uv run python -m evaluation score                      # scores.json and tables.
 uv run python -m evaluation docs                       # update the tables in docs/evaluation.md
 uv run python -m evaluation routing                    # router simulation, no keys needed
 uv run python -m evaluation latency                    # end-to-end timings
+uv run python -m evaluation robustness                 # third-party repositories; needs the network
 uv run python -m evaluation sample                     # blind rating sheet
 ```
 
