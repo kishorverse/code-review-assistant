@@ -27,7 +27,9 @@ OLDEST_MINOR = 7
 NEWEST_MINOR = 14
 """The range Ruff can target; a declaration outside it is clamped."""
 DEFAULT_LINE_LENGTH = 79
-"""PEP 8's maximum line length."""
+"""PEP 8's maximum line length, used when a project says nothing about its own."""
+FORMATTER_LINE_LENGTH = 88
+"""Ruff's and Black's default, used when a project configures one but sets no length."""
 MAX_LINE_LENGTH = 120
 """The longest declared line length honoured."""
 
@@ -113,4 +115,11 @@ def _line_length(data: dict[str, Any]) -> int | None:
     ):
         if isinstance(value, int) and not isinstance(value, bool) and value > 0:
             return value
+    # A project that configures Ruff or Black but sets no length has adopted that
+    # tool's default of 88, not PEP 8's 79. Measuring such a project against 79
+    # reported a finding for most of its longer lines: on requests and click that
+    # was 289 and 755 E501 findings, most of what those scans reported.
+    tools = _table(data, "tool")
+    if "ruff" in tools or "black" in tools:
+        return FORMATTER_LINE_LENGTH
     return None
