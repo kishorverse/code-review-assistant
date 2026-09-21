@@ -147,6 +147,28 @@ async def run_tool(
     return result
 
 
+_TEST_DIRECTORIES = frozenset(
+    {"test", "tests", "testing", "spec", "specs", "__tests__", "testdata", "fixture", "fixtures"}
+)
+_TEST_SUFFIXES = ("_test", ".test", "_spec", ".spec")
+
+
+def is_test_path(path: str) -> bool:
+    """Whether a POSIX path relative to the scan root looks like test code.
+
+    Test files carry credentials, tokens and certificates written to be fake, so
+    an analyzer that cannot tell a real secret from a plausible one reports far
+    more there than in production code. Callers use this to weigh a finding, not
+    to drop it: test code is still reviewed.
+    """
+    posix = PurePosixPath(path)
+    if any(part.lower() in _TEST_DIRECTORIES for part in posix.parts[:-1]):
+        return True
+    # ``stem`` keeps the inner extension, so ``client.test.ts`` stays ``client.test``.
+    stem = posix.stem.lower()
+    return stem.startswith("test_") or stem == "conftest" or stem.endswith(_TEST_SUFFIXES)
+
+
 def relative_to_root(reported: str | Path, root: Path, base: Path | None = None) -> str | None:
     """Convert a path printed by a tool into a POSIX path relative to ``root``.
 

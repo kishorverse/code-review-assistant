@@ -4,7 +4,13 @@ from pathlib import Path
 import pytest
 
 from app.errors import AnalyzerError
-from app.static.base import AnalysisTarget, absolute_paths, relative_to_root, run_tool
+from app.static.base import (
+    AnalysisTarget,
+    absolute_paths,
+    is_test_path,
+    relative_to_root,
+    run_tool,
+)
 
 
 def make_target(tmp_path: Path) -> AnalysisTarget:
@@ -64,3 +70,39 @@ def test_absolute_paths_join_posix_names_to_the_root(tmp_path: Path) -> None:
     target = make_target(tmp_path)
 
     assert absolute_paths(target, ["pkg/app.py"]) == [str(target.root / "pkg" / "app.py")]
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "tests/test_api.py",
+        "test/hooks.ts",
+        "src/__tests__/render.tsx",
+        "pkg/testdata/keys.json",
+        "api/fixtures/users.yaml",
+        "Tests/Helpers.cs",
+        "app/conftest.py",
+        "internal/router_test.go",
+        "src/client.test.ts",
+        "src/client.spec.js",
+    ],
+)
+def test_test_paths_are_recognized_by_directory_and_by_file_name(path: str) -> None:
+    assert is_test_path(path)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "app/settings.py",
+        "src/latest.ts",
+        "pkg/contest/rules.go",
+        "src/protest.js",
+        "testing_utils.py",
+        "docs/testing.md",
+    ],
+)
+def test_production_code_is_not_mistaken_for_tests(path: str) -> None:
+    # "testing.md" sits in docs/, and "contest"/"protest"/"latest" only contain
+    # the word: a substring match here would quietly downgrade real findings.
+    assert not is_test_path(path)
