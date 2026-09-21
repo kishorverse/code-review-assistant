@@ -10,17 +10,17 @@
       "python": 37
     },
     "kloc": 7.75,
-    "seconds": 6.2,
+    "seconds": 4.1,
     "severities": {
       "critical": 0,
-      "high": 15,
-      "medium": 111,
-      "low": 625
+      "high": 4,
+      "medium": 122,
+      "low": 384
     },
     "categories": {
-      "style": 365,
       "security": 143,
-      "maintainability": 140,
+      "maintainability": 141,
+      "style": 123,
       "bug": 61,
       "typing": 40,
       "performance": 2
@@ -36,8 +36,8 @@
       "opengrep": "ok"
     },
     "rules": {
-      "E501": 289,
       "B113": 120,
+      "E501": 47,
       "N802": 36
     },
     "score": 0,
@@ -55,18 +55,18 @@
       "python": 90
     },
     "kloc": 19.301,
-    "seconds": 8.4,
+    "seconds": 5.0,
     "severities": {
       "critical": 0,
       "high": 4,
       "medium": 43,
-      "low": 957
+      "low": 203
     },
     "categories": {
-      "style": 779,
-      "maintainability": 160,
+      "maintainability": 161,
       "security": 31,
       "typing": 27,
+      "style": 24,
       "performance": 7
     },
     "tools": {
@@ -80,12 +80,12 @@
       "opengrep": "ok"
     },
     "rules": {
-      "E501": 755,
       "C408": 23,
-      "unused-variable": 20
+      "unused-variable": 20,
+      "too-many-parameters": 19
     },
-    "score": 39,
-    "grade": "E",
+    "score": 78,
+    "grade": "B",
     "error": null
   },
   {
@@ -99,11 +99,11 @@
       "javascript": 141
     },
     "kloc": 21.492,
-    "seconds": 11.7,
+    "seconds": 5.9,
     "severities": {
       "critical": 0,
-      "high": 35,
-      "medium": 0,
+      "high": 6,
+      "medium": 29,
       "low": 117
     },
     "categories": {
@@ -125,7 +125,7 @@
       "Hex High Entropy String": 24,
       "Secret Keyword": 6
     },
-    "score": 78,
+    "score": 86,
     "grade": "B",
     "error": null
   },
@@ -141,11 +141,11 @@
       "javascript": 6
     },
     "kloc": 59.145,
-    "seconds": 8.6,
+    "seconds": 6.0,
     "severities": {
       "critical": 0,
-      "high": 48,
-      "medium": 0,
+      "high": 7,
+      "medium": 41,
       "low": 42
     },
     "categories": {
@@ -167,7 +167,7 @@
       "long-function": 31,
       "Basic Auth Credentials": 11
     },
-    "score": 91,
+    "score": 95,
     "grade": "A",
     "error": null
   },
@@ -182,7 +182,7 @@
       "go": 17
     },
     "kloc": 7.545,
-    "seconds": 2.0,
+    "seconds": 1.4,
     "severities": {
       "critical": 0,
       "high": 0,
@@ -221,11 +221,11 @@
       "java": 264
     },
     "kloc": 57.118,
-    "seconds": 9.8,
+    "seconds": 4.0,
     "severities": {
       "critical": 0,
-      "high": 2,
-      "medium": 0,
+      "high": 0,
+      "medium": 2,
       "low": 27
     },
     "categories": {

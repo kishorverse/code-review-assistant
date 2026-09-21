@@ -8,7 +8,7 @@ How each item of the project brief is met, and where to see it. ✅ done, ◐ pa
 |---|---|---|
 | Integrate LLMs with static code analysis | ✅ | Pipeline: [design](design.md); static findings go to the models as structured context: [LLM review](review.md) |
 | Detect common bug patterns and security vulnerabilities | ✅ | Ruff, Bandit, mypy, Opengrep with custom rules, detect-secrets, plus LLM review; CWE ids; [evaluation](evaluation.md) §2 |
-| Identify style deviations and suggest improvements | ✅ | Ruff (PEP 8, at the project's declared line length) and an LLM style task; [evaluation](evaluation.md) §3 |
+| Identify style deviations and suggest improvements | ✅ | Ruff (PEP 8, at the line length the project declares or its formatter implies) and an LLM style task; [evaluation](evaluation.md) §3 |
 | Recommend optimizations for performance or readability | ✅ | Performance category (LLM and Ruff PERF), complexity metrics (Radon, Lizard), suggested changes on each finding |
 | Multiple languages, or one with extensibility | ✅ | Python in full; JavaScript, TypeScript, Java and Go through adapters in `backend/app/languages/` |
 | Clear, concise, actionable feedback | ✅ | Every finding: title, message, rationale ("why it matters"), quoted evidence, suggested change |
@@ -30,7 +30,7 @@ How each item of the project brief is met, and where to see it. ✅ done, ◐ pa
 |---|---|---|
 | Functional prototype that analyzes code and writes review comments | ✅ | Web UI, CLI, API; [README](../README.md) quick start |
 | Documentation: system design, model selection, integration approach | ✅ | [design](design.md), [model selection](model_selection.md), [routing](routing.md), [web API](api.md), [tech stack](tech-stack.md) |
-| Test suite demonstrating detection of bugs, style issues and optimizations | ✅ | 760+ backend and 18 frontend tests in CI; the labeled dataset in `eval/datasets/seeded/` with per-label results |
+| Test suite demonstrating detection of bugs, style issues and optimizations | ✅ | 780+ backend and 27 frontend tests in CI; the labeled dataset in `eval/datasets/seeded/` with per-label results |
 | Report on model performance and limitations, with recommendations | ✅ | [evaluation](evaluation.md): results, limitations (§8), recommendations (§9) |
 
 ## Modeling requirements

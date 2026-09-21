@@ -16,7 +16,7 @@ real code, names which model made it and which model confirmed it, and you accep
 
 - **Bugs and security.** Common bug patterns and vulnerabilities, with CWE ids: injection, unsafe
   deserialization, path traversal, SSRF, weak cryptography and randomness, hardcoded secrets, and more.
-- **Style.** Deviations from PEP 8 (Ruff), at the line length the project declares.
+- **Style.** Deviations from PEP 8 (Ruff), at the line length the project declares or its formatter implies.
 - **Optimization.** Performance and maintainability suggestions, backed by complexity metrics.
 - **Grounded AI review.** Static findings go to the models as structured context; a model's answer is
   kept only if the lines and quoted code it cites exist. Serious AI findings are cross-checked by a
@@ -61,8 +61,9 @@ gpt-oss-120b the fastest; a 4B local model found none of the semantic issues. Th
 [evaluation report](docs/evaluation.md) has the full results: model comparison, cross-model
 verification, style accuracy, a routing simulation, latency, and the limitations.
 
-Static scans take seconds (the 32-file project in about 4 s); hybrid scans take minutes on free tiers,
-because each model answer takes seconds to tens of seconds.
+Static scans take seconds (the 32-file project in about 4 s; six third-party repositories, 981 files
+across five languages, in 1.4 s to 6.0 s each); hybrid scans take minutes on free tiers, because each
+model answer takes seconds to tens of seconds.
 
 ## Quick start
 
@@ -184,9 +185,6 @@ Conventions are in [coding rules](docs/coding-rules.md) and [tech stack](docs/te
   author. Six third-party repositories are scanned too (5 languages, 981 files) but are unlabelled, so
   they show what Margin survives and how much it reports, not how much of it is right; public datasets
   (BugsInPy, CVEfixes) are the next step.
-- **Two defaults are wrong for real projects.** PEP 8's 79 columns are applied to projects that declare
-  no line length but are formatted at 88, and detect-secrets flags the fake credentials in test
-  fixtures; both dominate a first scan of a real repository. See the evaluation's recommendations.
 - **Not yet built:** generating and validating fixes as diffs, PDF reports, learning from reviewers'
   decisions, a VS Code extension, Docker Compose, and end-to-end browser tests.
 

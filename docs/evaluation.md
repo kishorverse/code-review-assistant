@@ -20,13 +20,15 @@ free-tier limits, and how long scans take. Every number below comes from the run
   router completes every call; in a burst it avoids every 429. In the live runs, 732 model calls met
   overloaded providers, spent quotas and timeouts, and no scan failed.
 - **Static scans take seconds; hybrid scans minutes**, dominated by the models' answer times.
-- **Real repositories do not break it, but they do flood it.** Six third-party projects in five
-  languages (981 files, 172 KLOC) scanned without a crash, at 350 to 1,600 files a minute; mature
-  libraries came out at one to two findings per KLOC. Two defaults are wrong for real code, though:
-  PEP 8's 79 columns against projects formatted at 88, and detect-secrets on test fixtures (section 6).
+- **Real repositories do not break it, and the first run showed where it over-reported.** Six
+  third-party projects in five languages (981 files, 172 KLOC) scanned without a crash, at 350 to
+  3,960 files a minute. That first run also exposed two wrong defaults — PEP 8's 79 columns against
+  projects formatted at 88, and detect-secrets on test fixtures — whose fixes cut findings across the
+  six from 2,041 to 1,046 and high-severity ones from 104 to 21, without touching the seeded dataset's
+  results (section 6).
 - **Free tiers are the weak point.** Run as routed while quotas were spent, the hybrid fell back to the
   local model for some tasks: recall stayed at 0.84, but precision dropped to 0.57.
-- **The evaluation found five real problems in Margin**, all fixed (section 7).
+- **The evaluation found seven real problems in Margin**, all fixed (section 7).
 - Human usefulness ratings are prepared but not yet collected.
 
 
@@ -370,21 +372,21 @@ Scanned 2026-09-21 UTC: static analysis only, at the default depth, with no API 
 
 | Repository | Language | Commit | Files | Reviewed | Languages seen | Analyzers | Seconds | Files per minute |
 |---|---|---|---|---|---|---|---|---|
-| psf/requests | Python | `dae7ef6` | 124 | 37 | python 37 | 8 of 8 | 6.2 | 358 |
-| pallets/click | Python | `6aabf09` | 174 | 90 | python 90 | 8 of 8 | 8.4 | 643 |
-| expressjs/express | JavaScript | `9a34acf` | 214 | 141 | javascript 141 | 3 of 8 | 11.7 | 723 |
-| sindresorhus/got | TypeScript | `e1d87d2` | 130 | 90 | typescript 84, javascript 6 | 3 of 8 | 8.6 | 628 |
-| gorilla/mux | Go | `db9d1d0` | 27 | 17 | go 17 | 2 of 8 | 2.0 | 510 |
-| google/gson | Java | `854c825` | 312 | 264 | java 264 | 2 of 8 | 9.8 | 1616 |
+| psf/requests | Python | `dae7ef6` | 124 | 37 | python 37 | 8 of 8 | 4.1 | 541 |
+| pallets/click | Python | `6aabf09` | 174 | 90 | python 90 | 8 of 8 | 5.0 | 1080 |
+| expressjs/express | JavaScript | `9a34acf` | 214 | 141 | javascript 141 | 3 of 8 | 5.9 | 1434 |
+| sindresorhus/got | TypeScript | `e1d87d2` | 130 | 90 | typescript 84, javascript 6 | 3 of 8 | 6.0 | 900 |
+| gorilla/mux | Go | `db9d1d0` | 27 | 17 | go 17 | 2 of 8 | 1.4 | 729 |
+| google/gson | Java | `854c825` | 312 | 264 | java 264 | 2 of 8 | 4.0 | 3960 |
 
 | Repository | KLOC | Critical | High | Medium | Low | Findings per KLOC | Score | Most reported rules |
 |---|---|---|---|---|---|---|---|---|
-| psf/requests | 7.8 | 0 | 15 | 111 | 625 | 97 | 0/100 (E) | E501 (289), B113 (120), N802 (36) |
-| pallets/click | 19.3 | 0 | 4 | 43 | 957 | 52 | 39/100 (E) | E501 (755), C408 (23), unused-variable (20) |
-| expressjs/express | 21.5 | 0 | 35 | 0 | 117 | 7 | 78/100 (B) | long-function (115), Hex High Entropy String (24), Secret Keyword (6) |
-| sindresorhus/got | 59.1 | 0 | 48 | 0 | 42 | 2 | 91/100 (A) | Secret Keyword (34), long-function (31), Basic Auth Credentials (11) |
+| psf/requests | 7.8 | 0 | 4 | 122 | 384 | 66 | 0/100 (E) | B113 (120), E501 (47), N802 (36) |
+| pallets/click | 19.3 | 0 | 4 | 43 | 203 | 13 | 78/100 (B) | C408 (23), unused-variable (20), too-many-parameters (19) |
+| expressjs/express | 21.5 | 0 | 6 | 29 | 117 | 7 | 86/100 (B) | long-function (115), Hex High Entropy String (24), Secret Keyword (6) |
+| sindresorhus/got | 59.1 | 0 | 7 | 41 | 42 | 2 | 95/100 (A) | Secret Keyword (34), long-function (31), Basic Auth Credentials (11) |
 | gorilla/mux | 7.5 | 0 | 0 | 0 | 15 | 2 | 98/100 (A) | long-function (11), function-complexity (4) |
-| google/gson | 57.1 | 0 | 2 | 0 | 27 | 1 | 99/100 (A) | long-function (14), function-complexity (13), Secret Keyword (1) |
+| google/gson | 57.1 | 0 | 0 | 2 | 27 | 1 | 99/100 (A) | long-function (14), function-complexity (13), Secret Keyword (1) |
 <!-- /TABLE -->
 
 What it shows:
@@ -394,33 +396,53 @@ What it shows:
   with no file of a language it reads reported *skipped* rather than failing: Ruff, Bandit, mypy, Radon
   and Vulture on the four non-Python projects, and Opengrep on Go and Java, which Margin's custom rules
   do not yet cover. That is the intended behaviour, and it is what the "Analyzers" column counts.
-- **Speed holds at real sizes.** 2.0 s to 11.7 s per repository, 350 to 1,600 files a minute, on
-  projects up to 59 KLOC — far beyond the brief's 500-line snippet, and still interactive.
-- **On mature code the non-style analyzers are quiet.** gson scored 99/100, mux 98/100 and got 91/100:
-  one to two findings per KLOC, nearly all complexity remarks. Widely reviewed code looking clean is
-  the result to expect, and Margin produces it.
+- **Speed holds at real sizes.** 1.4 s to 6.0 s per repository, 540 to 3,960 files a minute, on
+  projects up to 59 KLOC — far beyond the brief's 500-line snippet, and still interactive. (The
+  benchmark reuses its checkouts, so a first run, fetching and reading cold, took about twice as long.)
+- **On mature code the analyzers are quiet.** gson scored 99/100, mux 98/100 and got 95/100: one to two
+  findings per KLOC, nearly all complexity remarks. Widely reviewed code looking clean is the result to
+  expect, and Margin produces it.
 
-And two places where a first scan of a real project reports far too much:
+### What the first run found, and what it changed
 
-- **Undeclared line length drowns Python repositories.** Neither requests nor click declares a line
-  length, so PEP 8's 79 columns apply, while both are in fact formatted at 88. E501 alone is 289 of
-  requests' 751 findings and 755 of click's 1,004, which is what drags both to grade E. Margin is
-  applying the standard correctly and is still wrong in practice, because it is measuring these
-  projects against a rule they never adopted.
-- **detect-secrets is noisy on JavaScript and TypeScript.** 46 of got's 48 high-severity findings and
-  all 35 of express's come from detect-secrets, and 78 of those 81 sit in test or fixture files:
-  sample tokens, dummy credentials and high-entropy strings written to be fake. On the seeded dataset,
-  where the secrets are real, the same analyzer was precise; on real repositories it is the largest
-  source of high-severity noise.
+The first pass over these repositories reported 2,041 findings, 104 of them high severity. Two defaults
+accounted for most of it, and both are now fixed (section 7). The tables above are the rerun; the first
+run is the "before" column here:
 
-Both are counted, not estimated, and both have a fix in section 9. What this benchmark does not give is
-precision or recall: these repositories are unlabelled, so the tables say what Margin reports, not what
-share of it is right. Labelling a sample of these findings, and running public datasets (BugsInPy,
-CVEfixes), is the next step.
+| | Before | After |
+|---|---|---|
+| Findings across the six repositories | 2,041 | **1,046** |
+| High severity | 104 | **21** |
+| E501 on requests / click | 289 / 755 | **47 / 0** |
+| click's score | 39/100 (E) | **78/100 (B)** |
+| express's and got's high-severity findings | 35 / 48 | **6 / 7** |
+
+- **Undeclared line length drowned the Python repositories.** Neither requests nor click sets a line
+  length, so PEP 8's 79 columns applied, while both are in fact formatted at 88. E501 alone was 289 of
+  requests' 751 findings and 755 of click's 1,004. Margin was applying the standard correctly and was
+  still wrong in practice, because both projects configure Ruff and had therefore adopted Ruff's own
+  default of 88 without writing it down. Margin now reads a `[tool.ruff]` or `[tool.black]` table with
+  no length as a declaration of that tool's default, and keeps 79 only for projects that configure
+  neither.
+- **detect-secrets was the largest source of high-severity noise.** 46 of got's 48 high-severity
+  findings and all 35 of express's came from detect-secrets, and 78 of those 81 sat in test or fixture
+  files: sample tokens, dummy credentials and high-entropy strings written to be fake. Secrets in test
+  paths are now reported one severity lower, and say why. They are still reported, because real secrets
+  do get committed in tests.
+
+Neither change touched the seeded dataset: none of its files sit in a test path, and it declares no
+formatter, so its static scan still reports the same 33 findings and section 2's metrics are unmoved.
+What survives in requests after the fix is largely real: 120 `B113` findings are requests' own test
+suite calling without timeouts.
+
+What this benchmark does not give is precision or recall: these repositories are unlabelled, so the
+tables say what Margin reports, not what share of it is right. Labelling a sample of these findings, and
+running public datasets (BugsInPy, CVEfixes), is the next step.
 
 ## 7. What the evaluation changed in Margin
 
-The evaluation, and scanning Margin's own code while it ran, found five real problems, all fixed:
+The evaluation, and scanning Margin's own code and other people's while it ran, found seven real
+problems, all fixed:
 
 | Problem | How it showed | Fix |
 |---|---|---|
@@ -428,6 +450,8 @@ The evaluation, and scanning Margin's own code while it ran, found five real pro
 | Isolated Ruff assumed an old Python target, so `except ExceptionGroup` was an undefined name (high) | Scanning Margin's own code | Ruff targets the Python version the upload declares, 3.11 by default |
 | Request limits in token buckets allowed up to twice the limit in the first minute | 429s from Gemini's free tier; the routing simulation's outage scenario | Sliding windows for requests per minute and per day |
 | Style review had half the review task's output budget; NVIDIA's reasoning ran out of it 18 times, and each fell back to the local model | Rejected calls in the routed runs | The same budget as review |
+| PEP 8's 79 columns were applied to projects that declare no line length but configure Ruff or Black, whose default is 88 | Scanning requests and click (§6): 289 and 755 E501 findings, most of what those scans reported | A `[tool.ruff]` or `[tool.black]` table with no length counts as declaring that tool's default |
+| detect-secrets reported the fake credentials in test fixtures at high severity | Scanning express and got (§6): 78 of 81 high-severity secret findings were in tests | Secrets in test paths are reported one severity lower, and say why |
 | A masked secret (`<REDACTED_SECRET_1>`) read to a model as a placeholder, and it judged a real hardcoded key a false positive | A live scan for the README screenshots | The prompts say plainly that masked values are real secrets (prompt version 2; the runs here used version 1). The rule protecting serious security findings kept the key reported |
 
 
@@ -453,36 +477,28 @@ The evaluation, and scanning Margin's own code while it ran, found five real pro
 
 ## 9. Recommendations
 
-In order of expected benefit:
+The two that the third-party scans made obvious — reading a project's real line length, and weighing
+secrets by where the file sits — are done, and section 7 records them. What is left, in order of
+expected benefit:
 
 1. **Never fall back to a much weaker model for hosted scans.** Most of the routed runs' false positives
    came from tasks that fell back to the local 4B model. A routing option to skip a task (and say so in
    the report) rather than hand it to a model below a quality bar would have kept routed precision near
    the single-reviewer 0.88.
-2. **Take the line length from the formatter a project uses, not only from what it declares.** On
-   requests and click, neither of which declares one, PEP 8's 79 columns produced 289 and 755 E501
-   findings against code formatted at 88 — most of everything those two scans reported (section 6).
-   Reading a `[tool.black]` or `[tool.ruff]` section as a declaration of its own default, or measuring
-   the project's prevailing line length, would remove that flood without weakening the standard for
-   projects that really do follow it.
-3. **Weigh detect-secrets by where the file sits.** 78 of the 81 high-severity secret findings across
-   express and got were in test and fixture files. Reporting secrets in test paths at a lower severity,
-   or behind a setting, would clear the largest source of high-severity noise on real repositories
-   without hiding a secret committed in production code.
-4. **Use the strongest available model as the verifier, and let disputes hide findings by default.**
+2. **Use the strongest available model as the verifier, and let disputes hide findings by default.**
    The local verifier did not help; Gemini, the most accurate reviewer, is the natural verifier, and with a
    verifier that good a disputed AI-only finding could be hidden instead of only flagged.
-5. **Merge AI findings into the static finding they restate.** A model sometimes files its own copy of
+3. **Merge AI findings into the static finding they restate.** A model sometimes files its own copy of
    an issue an analyzer already reported on the same line (a hardcoded key reported by both
    detect-secrets and the model), which costs precision without adding information.
-6. **Pay for one fast provider.** gpt-oss answered in 1.3 seconds against Nemotron's 30; hybrid scans
+4. **Pay for one fast provider.** gpt-oss answered in 1.3 seconds against Nemotron's 30; hybrid scans
    would drop from minutes to seconds, which is what near-real-time feedback in an editor needs.
-7. **Grow the evaluation:** collect the human ratings, label a sample of the third-party findings in
+5. **Grow the evaluation:** collect the human ratings, label a sample of the third-party findings in
    section 6, add public datasets (BugsInPy, CVEfixes), and label with more than one person.
-8. **Learn from reviewers' decisions.** Accepted and rejected findings are already recorded per scan;
+6. **Learn from reviewers' decisions.** Accepted and rejected findings are already recorded per scan;
    feeding them back (suppressing rules a team always rejects, adding accepted examples to prompts) is
    the stretch goal the data is ready for.
-9. **Offer fixes as diffs with a preview**, validated by re-running the analyzers on the patched code
+7. **Offer fixes as diffs with a preview**, validated by re-running the analyzers on the patched code
    before they are shown.
 
 ## 10. Reproducing
