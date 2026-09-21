@@ -180,8 +180,13 @@ Conventions are in [coding rules](docs/coding-rules.md) and [tech stack](docs/te
 - **Free tiers shape results.** Quotas run out and providers go down; Margin keeps going with fallbacks,
   but a scan that fell back to the local model is a shallower review (the report shows who reviewed
   what).
-- **The evaluation is small and synthetic.** 55 labels in 32 files, labeled by one author; public
-  datasets (BugsInPy, CVEfixes) and real repositories are the next step.
+- **The accuracy numbers come from a small, synthetic dataset.** 55 labels in 32 files, labeled by one
+  author. Six third-party repositories are scanned too (5 languages, 981 files) but are unlabelled, so
+  they show what Margin survives and how much it reports, not how much of it is right; public datasets
+  (BugsInPy, CVEfixes) are the next step.
+- **Two defaults are wrong for real projects.** PEP 8's 79 columns are applied to projects that declare
+  no line length but are formatted at 88, and detect-secrets flags the fake credentials in test
+  fixtures; both dominate a first scan of a real repository. See the evaluation's recommendations.
 - **Not yet built:** generating and validating fixes as diffs, PDF reports, learning from reviewers'
   decisions, a VS Code extension, Docker Compose, and end-to-end browser tests.
 

@@ -30,7 +30,7 @@ How each item of the project brief is met, and where to see it. ✅ done, ◐ pa
 |---|---|---|
 | Functional prototype that analyzes code and writes review comments | ✅ | Web UI, CLI, API; [README](../README.md) quick start |
 | Documentation: system design, model selection, integration approach | ✅ | [design](design.md), [model selection](model_selection.md), [routing](routing.md), [web API](api.md), [tech stack](tech-stack.md) |
-| Test suite demonstrating detection of bugs, style issues and optimizations | ✅ | 750+ backend and 18 frontend tests in CI; the labeled dataset in `eval/datasets/seeded/` with per-label results |
+| Test suite demonstrating detection of bugs, style issues and optimizations | ✅ | 760+ backend and 18 frontend tests in CI; the labeled dataset in `eval/datasets/seeded/` with per-label results |
 | Report on model performance and limitations, with recommendations | ✅ | [evaluation](evaluation.md): results, limitations (§8), recommendations (§9) |
 
 ## Modeling requirements
@@ -51,7 +51,7 @@ How each item of the project brief is met, and where to see it. ✅ done, ◐ pa
 | Accuracy on style violations against established guides | ✅ | [evaluation](evaluation.md) §3 (PEP 8 / PEP 257 labels) |
 | Usefulness of suggestions rated by expert reviewers | ◐ | Blind rating sheet, kappa scripts and instructions are ready (`eval/human_eval/`); the ratings are not collected yet |
 | Latency and throughput | ✅ | [evaluation](evaluation.md) §5 |
-| Robustness across codebases and languages | ◐ | Failures, outages and broken code in §6; static scans of Python and TypeScript codebases and an LLM review of a TypeScript file. No public benchmark datasets or third-party repositories yet |
+| Robustness across codebases and languages | ✅ | [evaluation](evaluation.md) §6: failures, outages and broken code; six third-party repositories in five languages (981 files, 172 KLOC) at pinned commits, re-runnable with `uv run python -m evaluation robustness`. Those repositories are unlabelled, so they measure survival and volume, not precision |
 
 ## Implementation constraints
 
@@ -67,7 +67,7 @@ How each item of the project brief is met, and where to see it. ✅ done, ◐ pa
 
 | Goal | Status | Where |
 |---|---|---|
-| Multiple languages, language-agnostic analysis | ◐ | Five languages; generic analyzers (Lizard, detect-secrets, Opengrep) and LLM review for all |
+| Multiple languages, language-agnostic analysis | ◐ | Five languages, each scanned in a third-party repository ([evaluation](evaluation.md) §6); generic analyzers (Lizard, detect-secrets, Opengrep) and LLM review for all |
 | Learning from user feedback | ✗ | Reviewer decisions are stored per scan; using them is future work |
 | Interactive interface or IDE plugin | ◐ | Interactive web UI; no IDE plugin |
 | Automated refactoring suggestions with safe previews | ◐ | Suggested changes as text; no diff preview or automatic application |

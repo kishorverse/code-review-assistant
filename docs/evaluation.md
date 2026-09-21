@@ -20,6 +20,10 @@ free-tier limits, and how long scans take. Every number below comes from the run
   router completes every call; in a burst it avoids every 429. In the live runs, 732 model calls met
   overloaded providers, spent quotas and timeouts, and no scan failed.
 - **Static scans take seconds; hybrid scans minutes**, dominated by the models' answer times.
+- **Real repositories do not break it, but they do flood it.** Six third-party projects in five
+  languages (981 files, 172 KLOC) scanned without a crash, at 350 to 1,600 files a minute; mature
+  libraries came out at one to two findings per KLOC. Two defaults are wrong for real code, though:
+  PEP 8's 79 columns against projects formatted at 88, and detect-secrets on test fixtures (section 6).
 - **Free tiers are the weak point.** Run as routed while quotas were spent, the hybrid fell back to the
   local model for some tasks: recall stayed at 0.84, but precision dropped to 0.57.
 - **The evaluation found five real problems in Margin**, all fixed (section 7).
@@ -341,7 +345,7 @@ Every number in this report came through the conditions the router exists for:
 
 ### Across codebases and languages
 
-The same CLI on three codebases, static analysis at the default depth, on 19 September 2026:
+Three codebases of this project, static analysis at the default depth, on 19 September 2026:
 
 | Codebase | Language | Files | Findings | Seconds | Analyzers |
 |---|---|---|---|---|---|
@@ -352,9 +356,67 @@ The same CLI on three codebases, static analysis at the default depth, on 19 Sep
 A standard-depth review of one TSX file (`ResultsView.tsx`) ran end to end as well: Lizard's two
 complexity findings were confirmed by models, and the style model added four remarks. NVIDIA was
 unavailable and Gemini's and Hugging Face's quotas were spent, so its bug and security review fell back
-to the local model: a working review, but a shallow one. The GitHub Action runs the same scan over
-the whole repository on every push. A labeled evaluation on other languages and on third-party
-repositories is still future work.
+to the local model: a working review, but a shallow one. The GitHub Action runs the same scan over the
+whole repository on every push.
+
+### Across third-party repositories
+
+Code written by other people, for other reasons, is the harder test. Six widely used repositories, one
+per supported language, each pinned to a commit and scanned by `margin scan` at the default depth with
+no API keys (`uv run python -m evaluation robustness`): 981 files, 172 KLOC.
+
+<!-- TABLE:robustness -->
+Scanned 2026-09-21 UTC: static analysis only, at the default depth, with no API keys. Each repository is pinned to the commit shown.
+
+| Repository | Language | Commit | Files | Reviewed | Languages seen | Analyzers | Seconds | Files per minute |
+|---|---|---|---|---|---|---|---|---|
+| psf/requests | Python | `dae7ef6` | 124 | 37 | python 37 | 8 of 8 | 6.2 | 358 |
+| pallets/click | Python | `6aabf09` | 174 | 90 | python 90 | 8 of 8 | 8.4 | 643 |
+| expressjs/express | JavaScript | `9a34acf` | 214 | 141 | javascript 141 | 3 of 8 | 11.7 | 723 |
+| sindresorhus/got | TypeScript | `e1d87d2` | 130 | 90 | typescript 84, javascript 6 | 3 of 8 | 8.6 | 628 |
+| gorilla/mux | Go | `db9d1d0` | 27 | 17 | go 17 | 2 of 8 | 2.0 | 510 |
+| google/gson | Java | `854c825` | 312 | 264 | java 264 | 2 of 8 | 9.8 | 1616 |
+
+| Repository | KLOC | Critical | High | Medium | Low | Findings per KLOC | Score | Most reported rules |
+|---|---|---|---|---|---|---|---|---|
+| psf/requests | 7.8 | 0 | 15 | 111 | 625 | 97 | 0/100 (E) | E501 (289), B113 (120), N802 (36) |
+| pallets/click | 19.3 | 0 | 4 | 43 | 957 | 52 | 39/100 (E) | E501 (755), C408 (23), unused-variable (20) |
+| expressjs/express | 21.5 | 0 | 35 | 0 | 117 | 7 | 78/100 (B) | long-function (115), Hex High Entropy String (24), Secret Keyword (6) |
+| sindresorhus/got | 59.1 | 0 | 48 | 0 | 42 | 2 | 91/100 (A) | Secret Keyword (34), long-function (31), Basic Auth Credentials (11) |
+| gorilla/mux | 7.5 | 0 | 0 | 0 | 15 | 2 | 98/100 (A) | long-function (11), function-complexity (4) |
+| google/gson | 57.1 | 0 | 2 | 0 | 27 | 1 | 99/100 (A) | long-function (14), function-complexity (13), Secret Keyword (1) |
+<!-- /TABLE -->
+
+What it shows:
+
+- **Nothing crashed, hung or was refused.** Every repository was ingested, preprocessed and analyzed.
+  The 18 files the filters left out were binaries, minified bundles and files over 1 MB. An analyzer
+  with no file of a language it reads reported *skipped* rather than failing: Ruff, Bandit, mypy, Radon
+  and Vulture on the four non-Python projects, and Opengrep on Go and Java, which Margin's custom rules
+  do not yet cover. That is the intended behaviour, and it is what the "Analyzers" column counts.
+- **Speed holds at real sizes.** 2.0 s to 11.7 s per repository, 350 to 1,600 files a minute, on
+  projects up to 59 KLOC — far beyond the brief's 500-line snippet, and still interactive.
+- **On mature code the non-style analyzers are quiet.** gson scored 99/100, mux 98/100 and got 91/100:
+  one to two findings per KLOC, nearly all complexity remarks. Widely reviewed code looking clean is
+  the result to expect, and Margin produces it.
+
+And two places where a first scan of a real project reports far too much:
+
+- **Undeclared line length drowns Python repositories.** Neither requests nor click declares a line
+  length, so PEP 8's 79 columns apply, while both are in fact formatted at 88. E501 alone is 289 of
+  requests' 751 findings and 755 of click's 1,004, which is what drags both to grade E. Margin is
+  applying the standard correctly and is still wrong in practice, because it is measuring these
+  projects against a rule they never adopted.
+- **detect-secrets is noisy on JavaScript and TypeScript.** 46 of got's 48 high-severity findings and
+  all 35 of express's come from detect-secrets, and 78 of those 81 sit in test or fixture files:
+  sample tokens, dummy credentials and high-entropy strings written to be fake. On the seeded dataset,
+  where the secrets are real, the same analyzer was precise; on real repositories it is the largest
+  source of high-severity noise.
+
+Both are counted, not estimated, and both have a fix in section 9. What this benchmark does not give is
+precision or recall: these repositories are unlabelled, so the tables say what Margin reports, not what
+share of it is right. Labelling a sample of these findings, and running public datasets (BugsInPy,
+CVEfixes), is the next step.
 
 ## 7. What the evaluation changed in Margin
 
@@ -385,8 +447,9 @@ The evaluation, and scanning Margin's own code while it ran, found five real pro
   every run in `eval/results/runs/`.
 - **Not measured in this round:** Gemini as the cross-check model (its quota was spent), and human
   ratings of usefulness (the sheet is ready, the ratings are not collected yet).
-- **No real-world repositories** in this round; the brief's robustness set and public datasets
-  (BugsInPy, CVEfixes) are left for future work.
+- **The third-party repositories are unlabelled.** Section 6 measures whether real code breaks Margin
+  and how much it reports, not how much of that is right. Public datasets (BugsInPy, CVEfixes) and a
+  labelled sample of these findings are left for future work.
 
 ## 9. Recommendations
 
@@ -396,20 +459,30 @@ In order of expected benefit:
    came from tasks that fell back to the local 4B model. A routing option to skip a task (and say so in
    the report) rather than hand it to a model below a quality bar would have kept routed precision near
    the single-reviewer 0.88.
-2. **Use the strongest available model as the verifier, and let disputes hide findings by default.**
+2. **Take the line length from the formatter a project uses, not only from what it declares.** On
+   requests and click, neither of which declares one, PEP 8's 79 columns produced 289 and 755 E501
+   findings against code formatted at 88 — most of everything those two scans reported (section 6).
+   Reading a `[tool.black]` or `[tool.ruff]` section as a declaration of its own default, or measuring
+   the project's prevailing line length, would remove that flood without weakening the standard for
+   projects that really do follow it.
+3. **Weigh detect-secrets by where the file sits.** 78 of the 81 high-severity secret findings across
+   express and got were in test and fixture files. Reporting secrets in test paths at a lower severity,
+   or behind a setting, would clear the largest source of high-severity noise on real repositories
+   without hiding a secret committed in production code.
+4. **Use the strongest available model as the verifier, and let disputes hide findings by default.**
    The local verifier did not help; Gemini, the most accurate reviewer, is the natural verifier, and with a
    verifier that good a disputed AI-only finding could be hidden instead of only flagged.
-3. **Merge AI findings into the static finding they restate.** A model sometimes files its own copy of
+5. **Merge AI findings into the static finding they restate.** A model sometimes files its own copy of
    an issue an analyzer already reported on the same line (a hardcoded key reported by both
    detect-secrets and the model), which costs precision without adding information.
-4. **Pay for one fast provider.** gpt-oss answered in 1.3 seconds against Nemotron's 30; hybrid scans
+6. **Pay for one fast provider.** gpt-oss answered in 1.3 seconds against Nemotron's 30; hybrid scans
    would drop from minutes to seconds, which is what near-real-time feedback in an editor needs.
-5. **Grow the evaluation:** collect the human ratings, add public datasets (BugsInPy, CVEfixes) and
-   several real repositories, and label with more than one person.
-6. **Learn from reviewers' decisions.** Accepted and rejected findings are already recorded per scan;
+7. **Grow the evaluation:** collect the human ratings, label a sample of the third-party findings in
+   section 6, add public datasets (BugsInPy, CVEfixes), and label with more than one person.
+8. **Learn from reviewers' decisions.** Accepted and rejected findings are already recorded per scan;
    feeding them back (suppressing rules a team always rejects, adding accepted examples to prompts) is
    the stretch goal the data is ready for.
-7. **Offer fixes as diffs with a preview**, validated by re-running the analyzers on the patched code
+9. **Offer fixes as diffs with a preview**, validated by re-running the analyzers on the patched code
    before they are shown.
 
 ## 10. Reproducing
@@ -419,6 +492,7 @@ From `backend/`:
 ```bash
 uv run python -m evaluation score      # recompute every table from the committed runs; no keys needed
 uv run python -m evaluation routing    # re-run the router simulation; no keys needed
+uv run python -m evaluation robustness # re-scan the third-party repositories; needs the network
 ```
 
 Re-running the model configurations needs keys in `backend/.env`; see `eval/README.md`.

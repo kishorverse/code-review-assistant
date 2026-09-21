@@ -1,0 +1,254 @@
+[
+  {
+    "repository": "psf/requests",
+    "language": "Python",
+    "commit": "dae7ef6",
+    "ingested": 124,
+    "reviewed": 37,
+    "skipped": 7,
+    "languages": {
+      "python": 37
+    },
+    "kloc": 7.75,
+    "seconds": 6.2,
+    "severities": {
+      "critical": 0,
+      "high": 15,
+      "medium": 111,
+      "low": 625
+    },
+    "categories": {
+      "style": 365,
+      "security": 143,
+      "maintainability": 140,
+      "bug": 61,
+      "typing": 40,
+      "performance": 2
+    },
+    "tools": {
+      "ruff": "ok",
+      "bandit": "ok",
+      "mypy": "ok",
+      "radon": "ok",
+      "vulture": "ok",
+      "lizard": "ok",
+      "detect-secrets": "ok",
+      "opengrep": "ok"
+    },
+    "rules": {
+      "E501": 289,
+      "B113": 120,
+      "N802": 36
+    },
+    "score": 0,
+    "grade": "E",
+    "error": null
+  },
+  {
+    "repository": "pallets/click",
+    "language": "Python",
+    "commit": "6aabf09",
+    "ingested": 174,
+    "reviewed": 90,
+    "skipped": 4,
+    "languages": {
+      "python": 90
+    },
+    "kloc": 19.301,
+    "seconds": 8.4,
+    "severities": {
+      "critical": 0,
+      "high": 4,
+      "medium": 43,
+      "low": 957
+    },
+    "categories": {
+      "style": 779,
+      "maintainability": 160,
+      "security": 31,
+      "typing": 27,
+      "performance": 7
+    },
+    "tools": {
+      "ruff": "ok",
+      "bandit": "ok",
+      "mypy": "ok",
+      "radon": "ok",
+      "vulture": "ok",
+      "lizard": "ok",
+      "detect-secrets": "ok",
+      "opengrep": "ok"
+    },
+    "rules": {
+      "E501": 755,
+      "C408": 23,
+      "unused-variable": 20
+    },
+    "score": 39,
+    "grade": "E",
+    "error": null
+  },
+  {
+    "repository": "expressjs/express",
+    "language": "JavaScript",
+    "commit": "9a34acf",
+    "ingested": 214,
+    "reviewed": 141,
+    "skipped": 1,
+    "languages": {
+      "javascript": 141
+    },
+    "kloc": 21.492,
+    "seconds": 11.7,
+    "severities": {
+      "critical": 0,
+      "high": 35,
+      "medium": 0,
+      "low": 117
+    },
+    "categories": {
+      "maintainability": 117,
+      "security": 35
+    },
+    "tools": {
+      "ruff": "skipped",
+      "bandit": "skipped",
+      "mypy": "skipped",
+      "radon": "skipped",
+      "vulture": "skipped",
+      "lizard": "ok",
+      "detect-secrets": "ok",
+      "opengrep": "ok"
+    },
+    "rules": {
+      "long-function": 115,
+      "Hex High Entropy String": 24,
+      "Secret Keyword": 6
+    },
+    "score": 78,
+    "grade": "B",
+    "error": null
+  },
+  {
+    "repository": "sindresorhus/got",
+    "language": "TypeScript",
+    "commit": "e1d87d2",
+    "ingested": 130,
+    "reviewed": 90,
+    "skipped": 3,
+    "languages": {
+      "typescript": 84,
+      "javascript": 6
+    },
+    "kloc": 59.145,
+    "seconds": 8.6,
+    "severities": {
+      "critical": 0,
+      "high": 48,
+      "medium": 0,
+      "low": 42
+    },
+    "categories": {
+      "security": 48,
+      "maintainability": 42
+    },
+    "tools": {
+      "ruff": "skipped",
+      "bandit": "skipped",
+      "mypy": "skipped",
+      "radon": "skipped",
+      "vulture": "skipped",
+      "lizard": "ok",
+      "detect-secrets": "ok",
+      "opengrep": "ok"
+    },
+    "rules": {
+      "Secret Keyword": 34,
+      "long-function": 31,
+      "Basic Auth Credentials": 11
+    },
+    "score": 91,
+    "grade": "A",
+    "error": null
+  },
+  {
+    "repository": "gorilla/mux",
+    "language": "Go",
+    "commit": "db9d1d0",
+    "ingested": 27,
+    "reviewed": 17,
+    "skipped": 1,
+    "languages": {
+      "go": 17
+    },
+    "kloc": 7.545,
+    "seconds": 2.0,
+    "severities": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 15
+    },
+    "categories": {
+      "maintainability": 15
+    },
+    "tools": {
+      "ruff": "skipped",
+      "bandit": "skipped",
+      "mypy": "skipped",
+      "radon": "skipped",
+      "vulture": "skipped",
+      "lizard": "ok",
+      "detect-secrets": "ok",
+      "opengrep": "skipped"
+    },
+    "rules": {
+      "long-function": 11,
+      "function-complexity": 4
+    },
+    "score": 98,
+    "grade": "A",
+    "error": null
+  },
+  {
+    "repository": "google/gson",
+    "language": "Java",
+    "commit": "854c825",
+    "ingested": 312,
+    "reviewed": 264,
+    "skipped": 2,
+    "languages": {
+      "java": 264
+    },
+    "kloc": 57.118,
+    "seconds": 9.8,
+    "severities": {
+      "critical": 0,
+      "high": 2,
+      "medium": 0,
+      "low": 27
+    },
+    "categories": {
+      "maintainability": 27,
+      "security": 2
+    },
+    "tools": {
+      "ruff": "skipped",
+      "bandit": "skipped",
+      "mypy": "skipped",
+      "radon": "skipped",
+      "vulture": "skipped",
+      "lizard": "ok",
+      "detect-secrets": "ok",
+      "opengrep": "skipped"
+    },
+    "rules": {
+      "long-function": 14,
+      "function-complexity": 13,
+      "Secret Keyword": 1
+    },
+    "score": 99,
+    "grade": "A",
+    "error": null
+  }
+]
