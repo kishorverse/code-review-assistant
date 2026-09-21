@@ -57,8 +57,9 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       # The evaluation dataset and the tests contain vulnerable code on purpose. CI
-      # configuration is not the product under review, and its pinned checksums look
-      # like secrets to a scanner that, by design, ignores allowlist comments.
+      # configuration and the evaluation harness are not the product under review, and
+      # their pinned checksums and commit ids look like secrets to a scanner that, by
+      # design, ignores allowlist comments.
       - name: Review the repository
         working-directory: backend
         env:
@@ -75,6 +76,7 @@ jobs:
           if [ "$DEPTH" != "static" ]; then consent=(--allow-external); fi
           uv run margin scan .. --depth "$DEPTH" "${consent[@]}" \
             --exclude eval --exclude .github --exclude backend/tests --exclude frontend/src/test \
+            --exclude backend/evaluation \
             --format sarif --output "$RUNNER_TEMP/margin.sarif"
 
       - name: Upload to code scanning

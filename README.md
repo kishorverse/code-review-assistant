@@ -185,8 +185,9 @@ Conventions are in [coding rules](docs/coding-rules.md) and [tech stack](docs/te
   author. Six third-party repositories are scanned too (5 languages, 981 files) but are unlabelled, so
   they show what Margin survives and how much it reports, not how much of it is right; public datasets
   (BugsInPy, CVEfixes) are the next step.
-- **Not yet built:** generating and validating fixes as diffs, PDF reports, learning from reviewers'
-  decisions, a VS Code extension, Docker Compose, and end-to-end browser tests.
+- **Not yet built:** a safe way to mark a finding as a false positive (allowlist comments are ignored
+  on purpose, so `--exclude` is the only escape), generating and validating fixes as diffs, PDF reports,
+  learning from reviewers' decisions, a VS Code extension, Docker Compose, and end-to-end browser tests.
 
 ## Documentation
 
